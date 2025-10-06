@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.12"
 
 [[package]]
@@ -64,14 +64,14 @@ wheels = [
 
 [[package]]
 name = "holidays"
-version = "0.81"
+version = "0.82"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "python-dateutil" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/19/ff/76cbc6c7c5d80a236d7c748798373d6a2fa9aa39e8708da2b51e42e57147/holidays-0.81.tar.gz", hash = "sha256:d4eb4624f5a0a1d6c8f9577f0b6d028d610fedf610c0aeb4942e8730ba090a55", size = 769949, upload-time = "2025-09-15T19:17:41.014Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/23/a1/0cd601e5d463369d8bedbcfa37dda90763996b0e76306fe8b8e276088816/holidays-0.82.tar.gz", hash = "sha256:26589e1fac32e1fddb2d89ab5ac9342f8991582fb53e4539d12585aba9a9ab92", size = 787193, upload-time = "2025-10-06T20:44:40.358Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/15/de/875f1d928c12336b6a700808e1d250e709cb140e19a9e44e9c66781a84e1/holidays-0.81-py3-none-any.whl", hash = "sha256:1c6657ff50aa760c9503610ad5e81612ae2457d2b70a2291ca61637c938ba919", size = 1270429, upload-time = "2025-09-15T19:17:38.788Z" },
+    { url = "https://files.pythonhosted.org/packages/6b/59/60389bfa8e223a9abe07d75bb76e7aedcf5f76f7be6adc2cedaec474ca58/holidays-0.82-py3-none-any.whl", hash = "sha256:d94bac4a39271520aa7cc71746ccfbcf69c94a5b1c7f03286cefed69af3311db", size = 1295704, upload-time = "2025-10-06T20:44:38.527Z" },
 ]
 
 [[package]]
@@ -84,7 +84,7 @@ wheels = [
 ]
 
 [[package]]
-name = "korus-personal-info-chekcer"
+name = "korus-personal-info-checker"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
