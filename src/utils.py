@@ -129,11 +129,17 @@ def _merge_and_preprocess_files(
 
     merged_df = pd.concat(all_dfs, ignore_index=True)
 
-    # "접근일시" 또는 "일시" 컬럼을 "접속일시"로 표준화
-    if "접근일시" in merged_df.columns:
-        merged_df.rename(columns={"접근일시": cfg.COL_ACCESS_TIME}, inplace=True)
-    elif "일시" in merged_df.columns:
-        merged_df.rename(columns={"일시": cfg.COL_ACCESS_TIME}, inplace=True)
+    # Standardize access time columns ("접근일시", "일시") to the standard name
+    if cfg.COL_ALT_ACCESS_TIME_1 in merged_df.columns:
+        merged_df.rename(
+            columns={cfg.COL_ALT_ACCESS_TIME_1: cfg.COL_ACCESS_TIME},
+            inplace=True,
+        )
+    elif cfg.COL_ALT_ACCESS_TIME_2 in merged_df.columns:
+        merged_df.rename(
+            columns={cfg.COL_ALT_ACCESS_TIME_2: cfg.COL_ACCESS_TIME},
+            inplace=True,
+        )
 
     # 표준화된 "접속일시" 컬럼이 존재하면 datetime으로 변환
     if cfg.COL_ACCESS_TIME in merged_df.columns:

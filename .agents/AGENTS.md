@@ -64,8 +64,8 @@ and patterns of bulk queries/storage.
 
 - **Static Analysis**: Uses `ruff` (linting/formatting), `mypy` (type checking),
   `bandit` (security scanning).
-- **Documentation**: All major functions and modules have detailed Docstrings
-  written in Korean.
+- **Documentation**: All major functions and modules include detailed
+  English-language Docstrings.
 - **Configuration Management**: Key settings (file paths, thresholds, etc.)
   are defined as constants at the beginning of each module.
 

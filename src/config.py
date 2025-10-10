@@ -4,6 +4,8 @@
 
 # --- 일반 설정 ---
 COL_ACCESS_TIME = "접속일시"
+COL_ALT_ACCESS_TIME_1 = "접근일시"
+COL_ALT_ACCESS_TIME_2 = "일시"
 COL_EMPLOYEE_ID = "교직원ID"
 EXCEL_EXTENSIONS = (".xlsx", ".xls")
 SHEET_NAME_MAX_CHARS = 31

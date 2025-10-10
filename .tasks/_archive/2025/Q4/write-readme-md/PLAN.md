@@ -4,7 +4,7 @@
 Replace the simple README.md with comprehensive project documentation so users can understand and install/run the project.
 
 ## Constraints
-- Written in Korean (project is Korean-based)
+- Written in English (documentation standardized in English)
 - Based on codebase analysis results
 - Retain existing README.md content (project name)
 

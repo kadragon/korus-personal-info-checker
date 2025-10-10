@@ -5,7 +5,7 @@
 **Key Changes**:
 - Replaced simple README.md with complete project documentation
 - Added project overview, key features, installation methods, usage, structure explanation
-- Written in Korean for Korean users
+- Written in English to support the broader documentation translation effort
 
 **File Changes**:
 - `README.md`: Completely rewritten (project name retained)

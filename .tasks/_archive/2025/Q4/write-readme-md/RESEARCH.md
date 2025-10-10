@@ -24,7 +24,7 @@ Analyze the entire codebase to write a comprehensive README.md file. The existin
 ## Hypotheses
 - Existing README.md only has project name, not providing enough info to users
 - Codebase analysis can clearly explain features, installation, usage
-- Written in Korean to suit Korean users
+- Written in English to align with documentation translation goals
 
 ## Evidence
 - main.py: Executes three checkers (sayu_checker, login_checker, personal_file_checker)
@@ -33,7 +33,7 @@ Analyze the entire codebase to write a comprehensive README.md file. The existin
 - AGENTS.md: Explains project purpose and constraints
 
 ## Assumptions/Open Questions
-- README.md written in Korean (project is Korean-based)
+- README.md written in English per updated documentation standards
 - Targets users with basic Python knowledge
 - No GitHub links or additional resources currently (not provided)
 
