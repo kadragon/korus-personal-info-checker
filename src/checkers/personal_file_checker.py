@@ -1,13 +1,14 @@
 """
-이 모듈은 개인 정보 접근 로그를 확인하는 역할을 합니다.
-사용자의 개인 데이터 접근 기록이 포함된 Excel 파일을 처리하며,
-여러 파일이 발견되면 병합한 후 다음 여러 검사를 수행합니다:
-- '인사마스터' (HR 마스터) 프로그램 접근 (본인 접근 제외).
-- 사용자의 대량 데이터 조회.
-- 사용자의 대량 데이터 저장.
+This module checks personal information access logs.
+It processes Excel files containing user personal data access records,
+merges them if multiple files are found, and performs the following checks:
+- Access to 'HR Master' (HR master) program (excluding self-access).
+- User's bulk data queries.
+- User's bulk data saves.
 
-각 검사에 대한 필터링된 결과는 별도의 Excel 파일에 저장되며, 대량 접근 보고서에는
-임계값을 초과하는 사용자별로 시트가 생성될 수 있습니다.
+Filtered results for each check are saved to separate Excel files, and
+bulk access reports may
+have sheets created per user exceeding the threshold.
 """
 
 import os
@@ -22,29 +23,37 @@ from utils import find_and_prepare_excel_file, run_and_save_check
 
 def run_check(download_dir: str, save_dir: str, prev_month: str) -> int:
     """
-    개인 정보 접근 로그를 확인하는 메인 함수입니다.
+    Main function to check personal information access logs.
 
-    `download_dir`에서 모든 관련 Excel 파일을 찾아 단일 DataFrame으로 병합한 후,
-    다음과 같은 다양한 필터를 적용합니다:
-    1. '인사마스터' (HR 마스터) 프로그램 접근 (사용자가 자신의 기록에
-       접근하는 경우 제외).
-    2. 비정상적으로 많은 수의 기록을 조회한 사용자 (`VIEW_THRESHOLD` 초과).
-    3. 비정상적으로 많은 수의 기록을 저장한 사용자 (`SAVE_THRESHOLD` 초과).
+    Finds all relevant Excel files in `download_dir`, merges them into a
+    single DataFrame,
+    and applies the following filters:
+    1. Access to 'HR Master' (HR master) program (excluding cases where the
+       user accesses their own records).
+    2. Users who queried an abnormally large number of records
+       (`VIEW_THRESHOLD` exceeded).
+    3. Users who saved an abnormally large number of records
+       (`SAVE_THRESHOLD` exceeded).
 
-    각 검사 결과는 별도의 Excel 파일에 저장됩니다. 대량 접근에 대한 보고서는
-    임계값을 초과한 특정 사용자의 모든 기록을 포함하는 시트가 있는
-    다중 시트 Excel 파일입니다.
+    Results of each check are saved to separate Excel files. Reports for bulk access are
+    multi-sheet Excel files containing all records of specific users
+    exceeding the threshold.
 
-    매개변수:
-        download_dir (str): 원본 개인 정보 접근 로그 Excel 파일이 있는 디렉토리입니다.
-        save_dir (str): 생성된 보고서 Excel 파일이 저장될 디렉토리입니다.
-        prev_month (str): 'YYYYMM' 형식의 이전 달로, 출력 파일 이름 지정에 사용됩니다.
+    Parameters:
+        download_dir (str): The directory containing the original personal
+        information access log Excel files.
+        save_dir (str): The directory where the generated report Excel files
+        will be saved.
+        prev_month (str): The previous month in 'YYYYMM' format, used for
+        output file naming.
 
-    반환 값:
-        int: 처리된 원본 데이터의 행 수입니다. 파일을 찾을 수 없으면 0입니다.
+    Returns:
+    int: The number of rows in the processed original data. Returns 0 if
+    no files are found.
 
-    예외:
-        ValueError: 유효한 Excel 파일을 병합할 수 없거나 필수 열이 누락된 경우.
+    Raises:
+        ValueError: If valid Excel files cannot be merged or required
+        columns are missing.
     """
     print_checker_header(cfg.PERSONAL_INFO_REPORT_BASE)
 
@@ -111,21 +120,23 @@ def run_check(download_dir: str, save_dir: str, prev_month: str) -> int:
 
 def _filter_by_job_master_exclude_detail_id(df: pd.DataFrame) -> pd.DataFrame:
     """
-    '인사마스터' (HR 마스터) 프로그램 접근 기록을 필터링하며, 사용자의 ID가
-    '상세내용' 필드에 나타나는 경우(즉, 본인 접근)는 제외합니다.
+    Filters access records to the 'HR Master' (HR master) program,
+    excluding cases where the user's ID
+    appears in the 'Detail Content' field (i.e., self-access).
 
-    매개변수:
-        df (pd.DataFrame): 개인 정보 접근 로그를 포함하는 DataFrame입니다.
-                           예상 열: `COL_PROGRAM_NAME`,
-                           `COL_EMPLOYEE_ID`,
-                           `COL_ACCESS_TIME`, `COL_DETAIL_CONTENT`.
+    Parameters:
+    df (pd.DataFrame): DataFrame containing personal information access logs.
+                       Expected columns: `COL_PROGRAM_NAME`,
+                       `COL_EMPLOYEE_ID`,
+                       `COL_ACCESS_TIME`, `COL_DETAIL_CONTENT`.
 
-    반환 값:
-        pd.DataFrame: 필터링된 기록을 포함하며 직원 ID와 접근 시간으로 정렬된
-                      DataFrame입니다. 해당 기록이 없으면 빈 DataFrame을 반환합니다.
+    Returns:
+        pd.DataFrame: DataFrame containing filtered records, sorted by
+        employee ID and access time.
+                      Returns an empty DataFrame if no such records exist.
 
-    예외:
-        ValueError: 필터링에 필수적인 열이 누락된 경우.
+    Raises:
+        ValueError: If required columns for filtering are missing.
     """
     employee_id_col_to_use = cfg.COL_EMPLOYEE_ID
 
@@ -166,21 +177,23 @@ def _extract_and_save_by_job(
     df: pd.DataFrame, save_path: str, job: str, threshold: int, job_column_name: str
 ):
     """
-    특정 `job`(예: '조회', '저장')을 `threshold` 횟수 이상 수행한 사용자를 식별합니다.
-    이러한 각 사용자에 대해 해당 작업과 일치하는 기록뿐만 아니라 모든 기록을
-    지정된 Excel 파일의 별도 시트에 저장합니다.
+    Identifies users who performed a specific `job` (e.g., 'query', 'save')
+    more than `threshold` times.
+    For each such user, saves not only records matching that job but all records
+    to separate sheets in the specified Excel file.
 
-    매개변수:
-        df (pd.DataFrame): 모든 개인 정보 접근 로그를 포함하는 DataFrame입니다.
-        save_path (str): 결과가 저장될 Excel 파일의 전체 경로입니다.
-        job (str): 계산할 특정 작업 유형입니다 (예: '조회', '저장').
-        threshold (int): 사용자를 표시하기 위해 `job`을 수행해야 하는 최소 횟수입니다.
-        job_column_name (str): `df`에서 작업 유형을 포함하는 열의 이름입니다
-                               (예: `COL_JOB_PERFORMANCE`).
+    Parameters:
+        df (pd.DataFrame): DataFrame containing all personal information access logs.
+        save_path (str): The full path to the Excel file where results will be saved.
+        job (str): The specific job type to count (e.g., 'query', 'save').
+        threshold (int): The minimum number of times the `job` must be
+        performed to flag the user.
+        job_column_name (str): The name of the column in `df` containing the job type
+                               (e.g., `COL_JOB_PERFORMANCE`).
 
-    예외:
-        ValueError: 필수 열(`COL_EMPLOYEE_ID`, `COL_EMPLOYEE_NAME`,
-                      `job_column_name`)이 누락된 경우.
+    Raises:
+        ValueError: If required columns (`COL_EMPLOYEE_ID`, `COL_EMPLOYEE_NAME`,
+                       `job_column_name`) are missing.
     """
     employee_id_col_to_use = cfg.COL_EMPLOYEE_ID
 

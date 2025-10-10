@@ -1,7 +1,8 @@
 """
-이 모듈은 날짜 조작, 디렉토리 생성, 엑셀 파일 처리(열 너비 자동 맞춤 저장),
-처리할 특정 엑셀 파일 검색 및 준비와 같은 일반적인 작업을 위한
-유틸리티 함수를 제공합니다.
+This module provides utility functions for common tasks such as date
+manipulation, directory creation,
+Excel file processing (saving with auto-fit column widths), searching for
+and preparing specific Excel files to process.
 """
 
 import os
@@ -26,10 +27,11 @@ from display import (
 
 def get_prev_month_yyyymm() -> str:
     """
-    현재 날짜로부터 이전 달을 계산하고 'YYYYMM' 형식의 문자열로 반환합니다.
+    Calculates the previous month from the current date and returns it as a
+    string in 'YYYYMM' format.
 
-    반환 값:
-        str: 'YYYYMM' 형식의 이전 달입니다.
+    Returns:
+        str: The previous month in 'YYYYMM' format.
     """
     today = datetime.today()
     prev_month_date = today - relativedelta(months=1)
@@ -38,15 +40,18 @@ def get_prev_month_yyyymm() -> str:
 
 def make_save_dir(base_save_dir: str) -> str:
     """
-    `base_save_dir` 내에 이전 달(YYYYMM)의 이름으로 하위 디렉토리를 생성합니다.
-    하위 디렉토리가 이미 존재하면 아무 작업도 수행하지 않습니다.
+    Creates a subdirectory named after the previous month (YYYYMM) within
+    `base_save_dir`.
+    If the subdirectory already exists, no action is taken.
 
-    매개변수:
-        base_save_dir (str): 새 하위 디렉토리가 생성될 기본 디렉토리입니다.
-                             이 경로는 기존 디렉토리여야 합니다.
+    Parameters:
+        base_save_dir (str): The base directory where the new subdirectory
+        will be created.
+                             This path must be an existing directory.
 
-    반환 값:
-        str: 생성되었거나 이미 존재하는 이전 달의 하위 디렉토리에 대한 전체 경로입니다.
+    Returns:
+        str: The full path to the created or existing subdirectory for the
+        previous month.
     """
     prev_month_str = get_prev_month_yyyymm()
     save_dir = os.path.join(base_save_dir, prev_month_str)
@@ -61,11 +66,12 @@ def make_save_dir(base_save_dir: str) -> str:
 
 def save_excel_with_autofit(df: pd.DataFrame, path: str):
     """
-    Pandas DataFrame을 Excel 파일로 저장하고 열 너비를 자동으로 맞춥니다.
+    Saves a Pandas DataFrame to an Excel file and auto-fits the column widths.
 
-    매개변수:
-        df (pd.DataFrame): 저장할 DataFrame입니다.
-        path (str): Excel 파일이 저장될 전체 경로(파일 이름 포함)입니다.
+    Parameters:
+        df (pd.DataFrame): The DataFrame to save.
+        path (str): The full path (including filename) where the Excel file
+        will be saved.
     """
     df.to_excel(path, index=False)
     wb = openpyxl.load_workbook(path)
@@ -96,7 +102,8 @@ def save_excel_with_autofit(df: pd.DataFrame, path: str):
 
 
 def _find_excel_files(download_dir: str, file_prefix: str) -> list[str]:
-    """지정된 디렉토리에서 접두사와 확장자를 기준으로 Excel 파일 목록을 찾습니다."""
+    """Finds a list of Excel files in the specified directory based on prefix
+    and extension."""
     if not download_dir or not os.path.isdir(download_dir):
         raise EnvironmentError(f"다운로드 디렉토리를 찾을 수 없습니다: {download_dir}")
 
@@ -110,7 +117,8 @@ def _find_excel_files(download_dir: str, file_prefix: str) -> list[str]:
 def _merge_and_preprocess_files(
     excel_files: list[str], download_dir: str
 ) -> pd.DataFrame | None:
-    """Excel 파일 목록을 읽고 단일 데이터프레임으로 병합한 후 전처리합니다."""
+    """Reads the list of Excel files, merges them into a single DataFrame,
+    and preprocesses it."""
     all_dfs = []
     for file_name in excel_files:
         file_path = os.path.join(download_dir, file_name)
@@ -171,12 +179,12 @@ def find_and_prepare_excel_file(
     prev_month: str,
 ) -> tuple[pd.DataFrame | None, str | None]:
     """
-    지정된 폴더에서 Excel 파일을 찾아 병합, 전처리 및 저장합니다.
+    Finds, merges, preprocesses, and saves Excel files from the specified folder.
 
-    이 함수는 다음을 수행합니다:
-    1. `_find_excel_files`를 사용하여 관련 파일들을 찾습니다.
-    2. `_merge_and_preprocess_files`를 사용하여 파일들을 병합하고 전처리합니다.
-    3. 병합된 데이터프레임을 중간 결과물로 저장합니다.
+    This function performs the following:
+    1. Uses `_find_excel_files` to find relevant files.
+    2. Uses `_merge_and_preprocess_files` to merge and preprocess the files.
+    3. Saves the merged DataFrame as an intermediate result.
     """
     try:
         excel_files = _find_excel_files(download_dir, file_prefix)
@@ -216,7 +224,8 @@ def find_and_prepare_excel_file(
 
 def zip_files_by_prefix(target_dir: str, prefix_list: list[str]):
     """
-    파일명에서 '_' 앞부분(붙임N ... )을 zip 이름으로 하여 압축 생성
+    Creates zip archives using the part before '_' in filenames
+    (e.g., Attachment N ...) as the zip name.
     """
     files = [f for f in os.listdir(target_dir) if f.endswith(".xlsx")]
 
@@ -247,19 +256,20 @@ def filter_by_time_conditions(
     off_hours_end: int,
 ) -> pd.DataFrame:
     """
-    시간 조건(업무 시간 외, 공휴일/주말)에 따라 데이터프레임을 필터링합니다.
+    Filters the DataFrame based on time conditions (off-hours, holidays/weekends).
 
-    매개변수:
-        df (pd.DataFrame): 필터링할 데이터프레임.
-        time_col (str): 타임스탬프 정보를 포함하는 컬럼 이름.
-        employee_id_col (str): 직원 ID를 포함하는 컬럼 이름.
-        check_off_hours (bool): 업무 시간 외 검사를 활성화할지 여부.
-        check_holidays_weekends (bool): 공휴일 및 주말 검사를 활성화할지 여부.
-        off_hours_start (int): 업무 시간 외 시작 시간.
-        off_hours_end (int): 업무 시간 외 종료 시간.
+    Parameters:
+        df (pd.DataFrame): The DataFrame to filter.
+        time_col (str): The column name containing timestamp information.
+        employee_id_col (str): The column name containing employee ID.
+        check_off_hours (bool): Whether to enable off-hours checking.
+        check_holidays_weekends (bool): Whether to enable holidays and
+        weekends checking.
+        off_hours_start (int): The start time for off-hours.
+        off_hours_end (int): The end time for off-hours.
 
-    반환 값:
-        pd.DataFrame: 지정된 시간 조건을 충족하는 필터링된 데이터프레임.
+    Returns:
+        pd.DataFrame: The filtered DataFrame meeting the specified time conditions.
     """
     if df is None:
         raise ValueError("Input DataFrame cannot be None.")
@@ -294,17 +304,16 @@ def run_and_save_check(
     result_description: str,
 ):
     """
-    검사 함수를 실행하고, 결과가 있으면 Excel 파일로 저장한 후 상태 메시지를 출력합니다.
+    Runs the check function, saves the result to an Excel file if any, and
+    outputs a status message.
 
-    매개변수:
-        df (pd.DataFrame): 검사를 수행할 입력 DataFrame입니다.
-        check_func (function): (
-            DataFrame을 인자로 받아 필터링된 DataFrame을 반환하는 함수입니다.
-        )
-        save_path (str): 결과 Excel 파일이 저장될 경로입니다.
-        result_description (str): (
-            결과가 발견되었거나 발견되지 않았을 때 출력할 메시지에 사용될 설명입니다.
-        )
+    Parameters:
+        df (pd.DataFrame): The input DataFrame to perform the check on.
+        check_func (function): A function that takes a DataFrame and returns
+        a filtered DataFrame.
+        save_path (str): The path where the result Excel file will be saved.
+        result_description (str): The description to use in the output message
+        when results are found or not found.
     """
     filtered_df = check_func(df)
     if not filtered_df.empty:

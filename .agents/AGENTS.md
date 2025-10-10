@@ -65,12 +65,13 @@ and patterns of bulk queries/storage.
 - **Static Analysis**: Uses `ruff` (linting/formatting), `mypy` (type checking),
   `bandit` (security scanning).
 - **Documentation**: All major functions and modules include detailed
-  English-language Docstrings.
+  English-language Docstrings. Docstrings must be written in English for consistency.
 - **Configuration Management**: Key settings (file paths, thresholds, etc.)
   are defined as constants at the beginning of each module.
 
 ## Changelog
 
+- **2025-10-10**: Translated all Korean docstrings to English across all Python files (src/ and checkers/) to ensure consistency and improve maintainability.
 - **2025-10-01**: Modified data count summation display and output style. Each
   checker function returns data count, main.py calculates sum, display.py
   enables markup.

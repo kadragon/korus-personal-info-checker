@@ -1,13 +1,13 @@
 """
-이 모듈은 개인 정보 다운로드 사유를 확인하는 역할을 합니다.
-개인 데이터 다운로드 로그를 분석하고 다음과 같은 의심스러운 활동을 표시합니다:
-- 매우 짧거나 단순한 사유로 다운로드 (예: "asdfg", "12345").
-- 사용자가 과도한 총 기록 수를 다운로드하는 경우.
-- 사용자가 짧은 시간 내에 비정상적으로 높은 빈도로 데이터를 다운로드하는 경우.
-- 표준 업무 시간 외 또는 공휴일/주말에 다운로드하는 경우.
+This module checks the reasons for downloading personal information.
+It analyzes personal data download logs and flags suspicious activities such as:
+- Downloads with very short or simple reasons (e.g., "asdfg", "12345").
+- Users downloading an excessive total number of records.
+- Users downloading data at abnormally high frequency within a short time.
+- Downloads outside standard business hours or on holidays/weekends.
 
-메인 함수 `sayu_checker`("사유 검사기")는 이러한 검사를 수행하고
-필터링된 결과를 별도의 Excel 파일에 저장합니다.
+The main function `sayu_checker` ("Reason Checker") performs these checks and
+saves the filtered results to separate Excel files.
 """
 
 import os
@@ -27,15 +27,16 @@ from utils import (
 
 def _unique_char_count_below_5(text_input) -> bool:
     """
-    주어진 문자열의 고유 문자 수가 5개 이하인지 확인합니다.
-    이는 잠재적으로 의심스럽거나 설명이 부족한 다운로드 사유를 식별하는 데 사용됩니다.
+    Checks if the number of unique characters in the given string is 5 or fewer.
+    This is used to identify potentially suspicious or insufficiently explained
+    download reasons.
 
-    매개변수:
-        text_input: 확인할 문자열입니다. 일반적으로 다운로드 사유입니다.
+    Parameters:
+        text_input: The string to check. Typically the download reason.
 
-    반환 값:
-        bool: 고유 문자 수가 5개 이하이면 True, 그렇지 않으면 False입니다.
-              입력이 NaN(Not a Number)이면 False를 반환합니다.
+    Returns:
+        bool: True if the number of unique characters is 5 or fewer, False otherwise.
+              Returns False if the input is NaN (Not a Number).
     """
     if pd.isna(text_input):
         return False
@@ -44,23 +45,28 @@ def _unique_char_count_below_5(text_input) -> bool:
 
 def run_check(download_dir: str, save_dir: str, prev_month: str) -> int:
     """
-    개인 정보 다운로드 사유에서 의심스러운 패턴을 확인하는 메인 함수입니다.
+    Main function to check for suspicious patterns in personal information
+    download reasons.
 
-    다운로드 사유 로그 파일을 읽고 여러 필터를 적용합니다:
-    1. 유효하지 않거나 짧은 다운로드 사유.
-    2. 사용자별 높은 총 다운로드 수.
-    3. 한 시간 내 사용자별 높은 다운로드 빈도.
-    4. 업무 시간 외 또는 공휴일/주말 다운로드.
+    Reads the download reason log file and applies multiple filters:
+    1. Invalid or short download reasons.
+    2. High total download count per user.
+    3. High download frequency per user within one hour.
+    4. Downloads outside business hours or on holidays/weekends.
 
-    필터링된 각 결과 집합은 별도의 Excel 파일에 저장됩니다.
+    Each filtered result set is saved to a separate Excel file.
 
-    매개변수:
-        download_dir (str): 원본 다운로드 사유 Excel 파일이 있는 디렉토리입니다.
-        save_dir (str): 생성된 보고서 Excel 파일이 저장될 디렉토리입니다.
-        prev_month (str): 'YYYYMM' 형식의 이전 달로, 출력 파일 이름 지정에 사용됩니다.
+    Parameters:
+        download_dir (str): The directory containing the original download
+        reason Excel files.
+        save_dir (str): The directory where the generated report Excel files
+        will be saved.
+        prev_month (str): The previous month in 'YYYYMM' format, used for
+        output file naming.
 
-    반환 값:
-        int: 처리된 원본 데이터의 행 수입니다. 파일을 찾을 수 없으면 0입니다.
+    Returns:
+        int: The number of rows in the processed original data. Returns 0 if
+        no files are found.
     """
     print_checker_header(cfg.DOWNLOAD_REASON_REPORT_BASE)
 
@@ -129,22 +135,23 @@ def run_check(download_dir: str, save_dir: str, prev_month: str) -> int:
 
 def _check_download_sayu(df: pd.DataFrame) -> pd.DataFrame:
     """
-    다운로드 사유가 의심스러운(너무 짧거나 단순한) 기록을 필터링합니다.
-    검사를 위해 `_unique_char_count_below_5` 헬퍼 함수를 사용합니다.
+    Filters records with suspicious download reasons (too short or simple).
+    Uses the `_unique_char_count_below_5` helper function for the check.
 
-    매개변수:
-        df (pd.DataFrame): 다운로드 기록을 포함하는 DataFrame입니다. 예상 열:
-                           `COL_DOWNLOAD_REASON`(다운로드 사유),
-                           `COL_EMPLOYEE_ID`(직원 ID),
-                           `COL_ACCESS_TIME`(접근 타임스탬프).
+    Parameters:
+        df (pd.DataFrame): DataFrame containing download records. Expected columns:
+                           `COL_DOWNLOAD_REASON` (download reason),
+                           `COL_EMPLOYEE_ID` (employee ID),
+                           `COL_ACCESS_TIME` (access timestamp).
 
-    반환 값:
-        pd.DataFrame: 의심스러운 다운로드 사유가 있는 기록을 포함하며,
-                      직원 ID와 접근 시간으로 정렬된 필터링된 DataFrame입니다.
+    Returns:
+        pd.DataFrame: Filtered DataFrame containing records with suspicious
+        download reasons,
+                      sorted by employee ID and access time.
 
-    예외:
-        ValueError: 예상되는 다운로드 사유 열(`COL_DOWNLOAD_REASON`)이
-                    5번째 위치(인덱스 4)에 없는 경우.
+    Raises:
+        ValueError: If the expected download reason column
+        (`COL_DOWNLOAD_REASON`) is not in the 5th position (index 4).
     """
     if cfg.COL_DOWNLOAD_REASON not in df.columns:
         raise ValueError(f"'{cfg.COL_DOWNLOAD_REASON}' 컬럼을 찾을 수 없습니다.")
@@ -157,20 +164,21 @@ def _check_download_sayu(df: pd.DataFrame) -> pd.DataFrame:
 
 def _filter_high_download_users(df: pd.DataFrame) -> pd.DataFrame:
     """
-    총 다운로드 기록 수가 정의된 임계값을 초과하는 사용자를 필터링합니다.
+    Filters users whose total download record count exceeds the defined threshold.
 
-    매개변수:
-        df (pd.DataFrame): 다운로드 기록을 포함하는 DataFrame입니다. 예상 열:
-                           `COL_DOWNLOAD_COUNT`(다운로드된 기록 수),
-                           `COL_EMPLOYEE_ID`(직원 ID),
-                           `COL_ACCESS_TIME`(접근 타임스탬프).
+    Parameters:
+        df (pd.DataFrame): DataFrame containing download records. Expected columns:
+                           `COL_DOWNLOAD_COUNT` (number of downloaded records),
+                           `COL_EMPLOYEE_ID` (employee ID),
+                           `COL_ACCESS_TIME` (access timestamp).
 
-    반환 값:
-        pd.DataFrame: 임계값을 초과한 사용자의 모든 다운로드 기록을 포함하며,
-                      직원 ID와 접근 시간으로 정렬된 DataFrame입니다.
+    Returns:
+        pd.DataFrame: DataFrame containing all download records of users
+        exceeding the threshold,
+                      sorted by employee ID and access time.
 
-    예외:
-        ValueError: `COL_DOWNLOAD_COUNT` 컬럼이 없는 경우.
+    Raises:
+        ValueError: If the `COL_DOWNLOAD_COUNT` column is missing.
     """
     if cfg.COL_DOWNLOAD_COUNT not in df.columns:
         raise ValueError(f"'{cfg.COL_DOWNLOAD_COUNT}' 컬럼을 찾을 수 없습니다.")
@@ -192,21 +200,22 @@ def _filter_high_download_users(df: pd.DataFrame) -> pd.DataFrame:
 
 def _filter_high_freq_download(df: pd.DataFrame) -> pd.DataFrame:
     """
-    높은 빈도(한 시간 내에 임계값 횟수 이상)로 데이터를 다운로드한
-    사용자를 필터링합니다.
+    Filters users who downloaded data at high frequency (threshold or more
+    times within one hour).
 
-    매개변수:
-        df (pd.DataFrame): 다운로드 기록을 포함하는 DataFrame입니다. 예상 열:
-                           `COL_ACCESS_TIME`(접근 타임스탬프),
-                           `COL_EMPLOYEE_ID`(직원 ID).
+    Parameters:
+        df (pd.DataFrame): DataFrame containing download records. Expected columns:
+                           `COL_ACCESS_TIME` (access timestamp),
+                           `COL_EMPLOYEE_ID` (employee ID).
 
-    반환 값:
-        pd.DataFrame: 높은 빈도의 다운로드 폭주에 해당하는 기록을 포함하며,
-                      직원 ID와 접근 시간으로 정렬된 DataFrame입니다.
-                      해당 폭주가 없으면 빈 DataFrame을 반환합니다.
+    Returns:
+        pd.DataFrame: DataFrame containing records corresponding to
+        high-frequency download bursts,
+                      sorted by employee ID and access time.
+                      Returns an empty DataFrame if no such bursts exist.
 
-    예외:
-        ValueError: 입력 DataFrame `df`가 None인 경우.
+    Raises:
+        ValueError: If the input DataFrame `df` is None.
     """
     if df is None:
         raise ValueError("Input DataFrame cannot be None.")

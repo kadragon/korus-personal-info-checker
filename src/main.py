@@ -1,13 +1,14 @@
 """
-데이터 검사 프로세스를 실행하는 메인 스크립트입니다.
+Main script to execute the data inspection process.
 
-이 스크립트는 `checkers` 패키지 내의 모든 검사 모듈을 동적으로 찾아 실행합니다.
-각 검사기는 `*_checker.py` 형식의 파일명을 가져야 하며, 내부에 `*_checker`라는
-이름의 메인 함수를 포함해야 합니다.
+This script dynamically discovers and runs all checker modules within the
+`checkers` package.
+Each checker must be named in the format `*_checker.py` and contain a main
+function named `*_checker`.
 
-디렉토리와 같은 환경 변수 등 필요한 구성을 설정한 후,
-각 검사기의 메인 함수를 호출합니다.
-이 스크립트는 애플리케이션의 기본 진입점으로 실행되도록 설계되었습니다.
+After setting up necessary configurations such as environment variables for directories,
+it calls the main function of each checker.
+This script is designed to be executed as the application's primary entry point.
 """
 
 import importlib
@@ -39,7 +40,7 @@ def discover_and_run_checkers(
     download_dir: str, reports_save_dir: str, prev_month_str: str
 ) -> int:
     """
-    `checkers` 패키지 내의 모든 검사기 모듈을 동적으로 찾아 실행합니다.
+    Dynamically discovers and runs all checker modules within the `checkers` package.
     """
     total_count = 0
     for module_info in pkgutil.iter_modules(checkers.__path__):
@@ -71,10 +72,11 @@ def discover_and_run_checkers(
 
 def main():
     """
-    데이터 검사 프로세스를 실행하는 메인 함수입니다.
+    Main function to execute the data inspection process.
 
-    분석 대상 월(지난달)을 결정하고, 필요한 저장 디렉토리 구조를 생성한 후,
-    `checkers` 패키지 내의 모든 검사기들을 동적으로 찾아 실행합니다.
+    Determines the target month for analysis (previous month), creates the
+    necessary save directory structure,
+    and dynamically discovers and runs all checkers within the `checkers` package.
     """
     if not base_save_dir:
         print_error(
