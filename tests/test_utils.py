@@ -48,7 +48,7 @@ class TestSaveExcelWithAutofit:
 class TestFindExcelFiles:
     def test_find_excel_files(self, temp_dir):
         # Create test files
-        os.makedirs(temp_dir)
+        os.makedirs(temp_dir, exist_ok=True)
         open(os.path.join(temp_dir, "test.xlsx"), "w").close()
         open(os.path.join(temp_dir, "test.xls"), "w").close()
         open(os.path.join(temp_dir, "other.txt"), "w").close()

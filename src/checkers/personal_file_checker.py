@@ -156,6 +156,9 @@ def _filter_by_job_master_exclude_detail_id(df: pd.DataFrame) -> pd.DataFrame:
     # 조건 1: '프로그램명'이 '인사마스터'인 기록만 선택합니다.
     hr_master_df = df[df[cfg.COL_PROGRAM_NAME] == "인사마스터"].copy()
 
+    if hr_master_df.empty:
+        return hr_master_df
+
     # 조건 2: '상세내용'에 자신의 '직원ID'가 포함되어 있지 않은 기록만 남깁니다.
     #         (즉, 타인 조회 기록만 필터링)
     # 각 행을 순회하며 '직원ID'와 '상세내용'을 비교해야 하므로 apply 함수를 사용합니다.

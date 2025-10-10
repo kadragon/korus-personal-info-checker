@@ -39,6 +39,7 @@ class TestCheckDownloadSayu:
 class TestFilterHighDownloadUsers:
     def test_filter_high_download_users_above_threshold(self, sample_download_df):
         df = sample_download_df.copy()
+        df["다운로드데이터수(건)"] = 50
         df.loc[0, "다운로드데이터수(건)"] = 150  # above 100
 
         result = drc._filter_high_download_users(df)
@@ -83,7 +84,7 @@ class TestRunCheck:
     def test_run_check_with_data(self, temp_dir, sample_download_df, mocker):
         mocker.patch("src.checkers.download_reason_checker.print_checker_header")
         mocker.patch(
-            "src.utils.find_and_prepare_excel_file",
+            "src.checkers.download_reason_checker.find_and_prepare_excel_file",
             return_value=(sample_download_df, "path"),
         )
         mocker.patch(
@@ -98,8 +99,11 @@ class TestRunCheck:
             "src.checkers.download_reason_checker._filter_high_freq_download",
             return_value=pd.DataFrame(),
         )
-        mocker.patch("src.utils.filter_by_time_conditions", return_value=pd.DataFrame())
-        mocker.patch("src.utils.run_and_save_check")
+        mocker.patch(
+            "src.checkers.download_reason_checker.filter_by_time_conditions",
+            return_value=pd.DataFrame(),
+        )
+        mocker.patch("src.checkers.download_reason_checker.run_and_save_check")
 
         save_dir = temp_dir
         result = drc.run_check("download_dir", save_dir, "202309")
@@ -107,7 +111,10 @@ class TestRunCheck:
 
     def test_run_check_no_data(self, temp_dir, mocker):
         mocker.patch("src.checkers.download_reason_checker.print_checker_header")
-        mocker.patch("src.utils.find_and_prepare_excel_file", return_value=(None, None))
+        mocker.patch(
+            "src.checkers.download_reason_checker.find_and_prepare_excel_file",
+            return_value=(None, None),
+        )
 
         save_dir = temp_dir
         result = drc.run_check("download_dir", save_dir, "202309")

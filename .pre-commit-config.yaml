@@ -17,11 +17,13 @@ repos:
     hooks:
     -   id: mypy
         additional_dependencies: [types-python-dateutil]
-        args: [--namespace-packages]
+        pass_filenames: false
+        args: [--namespace-packages, -p, src]
 -   repo: https://github.com/PyCQA/bandit
     rev: 1.8.6
     hooks:
     -   id: bandit
+        pass_filenames: false
         args: ["-r", "src"]
 -   repo: https://github.com/igorshubovych/markdownlint-cli
     rev: v0.41.0

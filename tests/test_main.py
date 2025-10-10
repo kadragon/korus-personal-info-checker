@@ -15,7 +15,7 @@ class TestDiscoverAndRunCheckers:
         mocker.patch("importlib.import_module", return_value=mock_module)
 
         # Mock getattr
-        mocker.patch("builtins.getattr", return_value=mock_func)
+        mocker.patch.object(main, "getattr", return_value=mock_func, create=True)
 
         result = main.discover_and_run_checkers("download_dir", "save_dir", "202309")
         assert result == 10
@@ -32,7 +32,7 @@ class TestDiscoverAndRunCheckers:
         mocker.patch("pkgutil.iter_modules", return_value=[mock_module_info])
 
         mocker.patch("importlib.import_module", side_effect=Exception("Import error"))
-        mocker.patch("src.main.print_error")
+        mocker.patch.object(main, "print_error")
 
         result = main.discover_and_run_checkers("download_dir", "save_dir", "202309")
         assert result == 0
@@ -44,8 +44,8 @@ class TestDiscoverAndRunCheckers:
 
         mock_module = mocker.MagicMock()
         mocker.patch("importlib.import_module", return_value=mock_module)
-        mocker.patch("builtins.getattr", return_value=None)
-        mocker.patch("src.main.print_error")
+        mocker.patch.object(main, "getattr", return_value=None, create=True)
+        mocker.patch.object(main, "print_error")
 
         result = main.discover_and_run_checkers("download_dir", "save_dir", "202309")
         assert result == 0
@@ -59,7 +59,7 @@ class TestDiscoverAndRunCheckers:
         mock_func = mocker.MagicMock(return_value=None)
         mock_module.__dict__ = {"run_check": mock_func}
         mocker.patch("importlib.import_module", return_value=mock_module)
-        mocker.patch("builtins.getattr", return_value=mock_func)
+        mocker.patch.object(main, "getattr", return_value=mock_func, create=True)
 
         result = main.discover_and_run_checkers("download_dir", "save_dir", "202309")
         assert result == 0

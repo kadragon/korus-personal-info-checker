@@ -71,7 +71,7 @@ class TestRunCheck:
     def test_run_check_with_data(self, temp_dir, sample_personal_access_df, mocker):
         mocker.patch("src.checkers.personal_file_checker.print_checker_header")
         mocker.patch(
-            "src.utils.find_and_prepare_excel_file",
+            "src.checkers.personal_file_checker.find_and_prepare_excel_file",
             return_value=(sample_personal_access_df, "path"),
         )
         mocker.patch(
@@ -79,7 +79,7 @@ class TestRunCheck:
             return_value=pd.DataFrame(),
         )
         mocker.patch("src.checkers.personal_file_checker._extract_and_save_by_job")
-        mocker.patch("src.utils.run_and_save_check")
+        mocker.patch("src.checkers.personal_file_checker.run_and_save_check")
 
         save_dir = temp_dir
         result = pfc.run_check("download_dir", save_dir, "202309")
@@ -87,7 +87,10 @@ class TestRunCheck:
 
     def test_run_check_no_data(self, temp_dir, mocker):
         mocker.patch("src.checkers.personal_file_checker.print_checker_header")
-        mocker.patch("src.utils.find_and_prepare_excel_file", return_value=(None, None))
+        mocker.patch(
+            "src.checkers.personal_file_checker.find_and_prepare_excel_file",
+            return_value=(None, None),
+        )
 
         save_dir = temp_dir
         result = pfc.run_check("download_dir", save_dir, "202309")
