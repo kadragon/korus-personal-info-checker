@@ -16,9 +16,9 @@ from datetime import datetime
 
 import pandas as pd
 
-import config as cfg
-from display import print_checker_header, print_result
-from utils import find_and_prepare_excel_file, run_and_save_check
+from .. import config as cfg
+from ..display import print_checker_header, print_result
+from ..utils import find_and_prepare_excel_file, run_and_save_check
 
 
 def run_check(download_dir: str, save_dir: str, prev_month: str) -> int:

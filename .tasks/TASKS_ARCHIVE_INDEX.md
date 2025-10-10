@@ -18,3 +18,7 @@
   - Goal: Replace simple README.md with comprehensive project documentation
   - Key changes: Add project overview, features, installation, usage,
     structure, development info
+
+- **add-tests**: Add comprehensive unit and integration tests
+  - Goal: Achieve >80% test coverage, ensure reliability of checker functions
+  - Key changes: Add pytest/pytest-cov, create tests/ dir, write tests for utils, checkers, main

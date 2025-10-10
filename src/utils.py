@@ -15,8 +15,8 @@ import pandas as pd
 from dateutil.relativedelta import relativedelta
 from openpyxl.utils import get_column_letter
 
-import config as cfg
-from display import (
+from . import config as cfg
+from .display import (
     print_error,
     print_info,
     print_result,

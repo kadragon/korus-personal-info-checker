@@ -18,16 +18,16 @@ from types import ModuleType
 
 from dotenv import load_dotenv
 
-import checkers
-from config import ZIP_FILE_PREFIXES
-from display import (
+from . import checkers
+from .config import ZIP_FILE_PREFIXES
+from .display import (
     print_error,
     print_header,
     print_info,
     print_summary,
     print_zip_header,
 )
-from utils import get_prev_month_yyyymm, make_save_dir, zip_files_by_prefix
+from .utils import get_prev_month_yyyymm, make_save_dir, zip_files_by_prefix
 
 # .env 파일이 있는 경우 환경 변수를 로드합니다.
 # DOWNLOAD_DIR 및 SAVE_DIR을 하드코딩하지 않고 구성하는 데 유용합니다.
