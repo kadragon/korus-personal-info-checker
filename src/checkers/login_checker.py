@@ -47,7 +47,7 @@ def run_check(download_dir: str, save_dir: str, prev_month: str) -> int:
     no files are found.
 
     Raises:
-        ValueError: If the expected 'IP' column is not in the 10th position (index 9).
+        ValueError: If the expected 'IP' column is not found in the DataFrame.
     """
     print_checker_header(cfg.LOGIN_CHECK_REPORT_BASE)
 
