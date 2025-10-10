@@ -1,5 +1,5 @@
 """
-이 프로젝트의 모든 설정 상수를 중앙에서 관리합니다.
+Centralizes all configuration constants for this project.
 """
 
 # --- 일반 설정 ---

@@ -1,12 +1,12 @@
 """
-이 모듈은 사용자 로그인 기록 데이터에 대한 검사를 수행합니다.
-다음과 같은 의심스러운 로그인 패턴을 식별합니다:
-- 짧은 시간 내 여러 IP 주소에서의 로그인.
-- 업무 시간 외 로그인.
-- 공휴일 및 주말 로그인.
+This module performs checks on user login record data.
+It identifies suspicious login patterns such as:
+- Logins from multiple IP addresses within a short time.
+- Logins outside business hours.
+- Logins on holidays and weekends.
 
-메인 함수 `login_checker`는 이러한 검사를 조정하고 결과를
-별도의 Excel 파일에 저장합니다.
+The main function `login_checker` coordinates these checks and saves the results
+to separate Excel files.
 """
 
 import os
@@ -25,25 +25,29 @@ from utils import (
 
 def run_check(download_dir: str, save_dir: str, prev_month: str) -> int:
     """
-    로그인 기록 데이터에 대한 다양한 검사를 수행하는 메인 함수입니다.
+    Main function to perform various checks on login record data.
 
-    로그인 기록 Excel 파일을 읽은 후 다음 필터를 적용합니다:
-    1. IP 주소 변경: 정의된 시간 내에 여러 IP에서 로그인하는 사용자.
-    2. 업무 시간 외 접근: 표준 업무 시간 외에 발생한 로그인.
-    3. 공휴일/주말 접근: 공휴일 또는 주말에 발생한 로그인.
+    Reads the login record Excel file and applies the following filters:
+    1. IP address changes: Users logging in from multiple IPs within a defined time.
+    2. Off-hours access: Logins occurring outside standard business hours.
+    3. Holiday/weekend access: Logins occurring on holidays or weekends.
 
-    필터링된 각 결과 집합은 별도의 Excel 파일에 저장됩니다.
+    Each filtered result set is saved to a separate Excel file.
 
-    매개변수:
-        download_dir (str): 원본 로그인 기록 Excel 파일이 있는 디렉토리입니다.
-        save_dir (str): 생성된 보고서 Excel 파일이 저장될 디렉토리입니다.
-        prev_month (str): 'YYYYMM' 형식의 이전 달로, 출력 파일 이름 지정에 사용됩니다.
+    Parameters:
+        download_dir (str): The directory containing the original login
+        record Excel files.
+        save_dir (str): The directory where the generated report Excel files
+        will be saved.
+        prev_month (str): The previous month in 'YYYYMM' format, used for
+        output file naming.
 
-    반환 값:
-        int: 처리된 원본 데이터의 행 수입니다. 파일을 찾을 수 없으면 0입니다.
+    Returns:
+    int: The number of rows in the processed original data. Returns 0 if
+    no files are found.
 
-    예외:
-        ValueError: 예상되는 'IP' 열이 10번째 위치(인덱스 9)에 없는 경우.
+    Raises:
+        ValueError: If the expected 'IP' column is not found in the DataFrame.
     """
     print_checker_header(cfg.LOGIN_CHECK_REPORT_BASE)
 
@@ -117,20 +121,22 @@ def run_check(download_dir: str, save_dir: str, prev_month: str) -> int:
 
 def _filter_ip_switch(df: pd.DataFrame) -> pd.DataFrame:
     """
-    정의된 시간 창 내에 여러 개의 고유 IP 주소에서 로그인한 사용자를 필터링합니다.
+    Filters users who logged in from multiple unique IP addresses within a
+    defined time window.
 
-    매개변수:
-        df (pd.DataFrame): 로그인 기록을 포함하는 DataFrame입니다. 예상되는 열에는
-                           `COL_ACCESS_TIME`(접근 타임스탬프) 및 `COL_IP`(IP 주소),
-                           그리고 `COL_EMPLOYEE_ID`(직원 식별자)이 포함됩니다.
+    Parameters:
+        df (pd.DataFrame): DataFrame containing login records. Expected columns include
+                           `COL_ACCESS_TIME` (access timestamp) and
+                           `COL_IP` (IP address),
+                           and `COL_EMPLOYEE_ID` (employee identifier).
 
-    반환 값:
-        pd.DataFrame: IP 변경 알림을 트리거한 사용자 기록을 포함하는 DataFrame으로,
-                      직원 ID와 접근 시간으로 정렬됩니다.
-                      해당 기록이 없으면 빈 DataFrame을 반환합니다.
+    Returns:
+        pd.DataFrame: DataFrame containing user records that triggered IP change alerts,
+                      sorted by employee ID and access time.
+                      Returns an empty DataFrame if no such records exist.
 
-    예외:
-        ValueError: 입력 DataFrame `df`가 None인 경우.
+    Raises:
+        ValueError: If the input DataFrame `df` is None.
     """
     if df is None:
         raise ValueError("Input DataFrame cannot be None.")
