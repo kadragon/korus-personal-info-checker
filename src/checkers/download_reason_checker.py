@@ -42,7 +42,7 @@ def _unique_char_count_below_5(text_input) -> bool:
     return len(set(str(text_input))) <= 5
 
 
-def download_reason_checker(download_dir: str, save_dir: str, prev_month: str) -> int:
+def run_check(download_dir: str, save_dir: str, prev_month: str) -> int:
     """
     개인 정보 다운로드 사유에서 의심스러운 패턴을 확인하는 메인 함수입니다.
 
