@@ -13,7 +13,8 @@ and patterns of bulk queries/storage.
   before execution, setting `DOWNLOAD_DIR` (log file location) and `SAVE_DIR`
   (report save location).
 - **Input Data**: Analysis target logs must be Excel files with a specific
-  format. Follow the filename prefix rule (e.g., `개인정보 접속 기록_`).
+  format. Follow the filename prefix rule (e.g., `개인정보접속기록_`, meaning
+  `Personal Information Access Log_`).
 - **Execution Environment**: Requires Python 3.12 and installation of
   dependencies listed in `pyproject.toml`.
 
