@@ -20,7 +20,7 @@ from display import print_checker_header, print_result
 from utils import find_and_prepare_excel_file, run_and_save_check
 
 
-def personal_file_checker(download_dir: str, save_dir: str, prev_month: str) -> int:
+def run_check(download_dir: str, save_dir: str, prev_month: str) -> int:
     """
     개인 정보 접근 로그를 확인하는 메인 함수입니다.
 

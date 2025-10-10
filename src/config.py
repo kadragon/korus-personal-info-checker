@@ -4,9 +4,12 @@
 
 # --- 일반 설정 ---
 COL_ACCESS_TIME = "접속일시"
+COL_ALT_ACCESS_TIME_1 = "접근일시"
+COL_ALT_ACCESS_TIME_2 = "일시"
 COL_EMPLOYEE_ID = "교직원ID"
 EXCEL_EXTENSIONS = (".xlsx", ".xls")
 SHEET_NAME_MAX_CHARS = 31
+ZIP_FILE_PREFIXES = ["[붙임2", "[붙임3", "[붙임4"]
 
 # --- 로그인 검사기 (login_checker.py) ---
 LOGIN_LOG_FILE_PREFIX = "사용자접속내역_Login내역_"

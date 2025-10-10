@@ -23,7 +23,7 @@ from utils import (
 )
 
 
-def login_checker(download_dir: str, save_dir: str, prev_month: str) -> int:
+def run_check(download_dir: str, save_dir: str, prev_month: str) -> int:
     """
     로그인 기록 데이터에 대한 다양한 검사를 수행하는 메인 함수입니다.
 

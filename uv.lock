@@ -84,7 +84,7 @@ wheels = [
 ]
 
 [[package]]
-name = "korus-personal-info-chekcer"
+name = "korus-personal-info-checker"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

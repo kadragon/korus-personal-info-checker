@@ -18,6 +18,7 @@ from types import ModuleType
 from dotenv import load_dotenv
 
 import checkers
+from config import ZIP_FILE_PREFIXES
 from display import (
     print_error,
     print_header,
@@ -48,7 +49,7 @@ def discover_and_run_checkers(
 
         try:
             module: ModuleType = importlib.import_module(f"checkers.{module_name}")
-            checker_func_name = module_name
+            checker_func_name = "run_check"  # 표준 진입점 함수 이름
             checker_func = getattr(module, checker_func_name, None)
 
             if callable(checker_func):
@@ -95,21 +96,17 @@ def main():
     print_info(f"원본 데이터 경로: {download_dir}")
     print_info(f"결과 저장 경로: {reports_save_dir}")
 
-    if download_dir and reports_save_dir:
-        total_count = discover_and_run_checkers(
-            download_dir, reports_save_dir, prev_month_str
-        )
+    total_count = discover_and_run_checkers(
+        download_dir, reports_save_dir, prev_month_str
+    )
 
-        print_zip_header()
-        try:
-            zip_files_by_prefix(reports_save_dir, ["[붙임2", "[붙임3", "[붙임4"])
-        except Exception as e:
-            print_error(f"압축 작업 중 오류 발생: {e}")
+    print_zip_header()
+    try:
+        zip_files_by_prefix(reports_save_dir, ZIP_FILE_PREFIXES)
+    except Exception as e:
+        print_error(f"압축 작업 중 오류 발생: {e}")
 
-        print_summary(reports_save_dir, total_count)
-
-    else:
-        print_error("다운로드 경로나 저장 경로가 올바르게 설정되지 않았습니다.")
+    print_summary(reports_save_dir, total_count)
 
 
 if __name__ == "__main__":
