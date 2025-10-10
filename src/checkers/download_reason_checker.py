@@ -151,7 +151,7 @@ def _check_download_sayu(df: pd.DataFrame) -> pd.DataFrame:
 
     Raises:
         ValueError: If the expected download reason column
-        (`COL_DOWNLOAD_REASON`) is not in the 5th position (index 4).
+        (`COL_DOWNLOAD_REASON`) is not found in the DataFrame.
     """
     if cfg.COL_DOWNLOAD_REASON not in df.columns:
         raise ValueError(f"'{cfg.COL_DOWNLOAD_REASON}' 컬럼을 찾을 수 없습니다.")
