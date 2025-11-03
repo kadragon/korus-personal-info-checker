@@ -60,7 +60,7 @@ SAVE_DIR=/path/to/save/reports
 ### 기본 실행
 
 ```bash
-python src/main.py
+python -m src.main
 ```
 
 실행 시 이전 달(YYYYMM)의 로그를 자동으로 분석하며, 다음과 같은 출력을 표시합니다:
@@ -178,13 +178,19 @@ korus-personal-info-checker/
 ### 테스트 실행
 
 ```bash
+# 개발 의존성 설치
+pip install -e .[dev]
+
+# 또는 uv 사용
+uv sync --extra dev
+
+# 단위 테스트 및 커버리지
+pytest --cov=src --cov-report=term-missing
+
 # 정적 분석
 ruff check src/
 mypy src/
 bandit -r src/
-
-# 개발 의존성 설치
-pip install -e .[dev]
 ```
 
 ### 기여 방법
