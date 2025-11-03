@@ -237,7 +237,9 @@ def zip_files_by_prefix(target_dir: str, prefix_list: list[str]):
             print_zip_warning(prefix)
             continue
 
-        group_name = prefix if prefix else matched[0].split("_")[0].split("(")[0]
+        # Use the full prefix as the zip file name
+        # (e.g., "[붙임2] 코러스 사용자 접근 기록.zip")
+        group_name = prefix
         zip_name = f"{group_name}.zip"
         zip_path = os.path.join(target_dir, zip_name)
 

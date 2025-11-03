@@ -75,10 +75,10 @@ def print_zip_header():
 def print_zip_result(zip_name: str, num_files: int):
     """Outputs the compression task result."""
     console.print(
-        f"  [bold green]✅[/bold green] {zip_name} 생성 ({num_files}개 파일 포함)"
+        f"  [bold green]OK[/bold green] {zip_name} 생성 ({num_files}개 파일 포함)"
     )
 
 
 def print_zip_warning(prefix: str):
     """Outputs a warning when there are no files to compress."""
-    console.print(f"  [yellow]⚠️[/yellow] {prefix}로 시작하는 파일 없음")
+    console.print(f"  [yellow]WARNING[/yellow] {prefix}로 시작하는 파일 없음")
