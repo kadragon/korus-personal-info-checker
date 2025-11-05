@@ -49,7 +49,9 @@ def discover_and_run_checkers(
             continue
 
         try:
-            module: ModuleType = importlib.import_module(f"src.checkers.{module_name}")
+            module: ModuleType = importlib.import_module(
+                f".{module_name}", package=checkers.__name__
+            )
             checker_func_name = "run_check"  # 표준 진입점 함수 이름
             checker_func = getattr(module, checker_func_name, None)
 

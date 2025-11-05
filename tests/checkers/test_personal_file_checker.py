@@ -37,8 +37,9 @@ class TestExtractAndSaveByJob:
     def test_extract_and_save_by_job_above_threshold(
         self, temp_dir, sample_personal_access_df, mocker
     ):
-        mocker.patch("src.checkers.personal_file_checker.print_result")
-        mocker.patch("src.utils.save_excel_with_autofit")
+        mock_print_result = mocker.patch(
+            "src.checkers.personal_file_checker.print_result"
+        )
 
         df = sample_personal_access_df.copy()
         # Add more rows to exceed threshold
@@ -51,14 +52,29 @@ class TestExtractAndSaveByJob:
         save_path = os.path.join(temp_dir, "test.xlsx")
         pfc._extract_and_save_by_job(df, save_path, "조회", 100, "수행업무")
 
+        # Verify file was created
+        assert os.path.exists(save_path)
+        # Verify print_result was called with detection
+        mock_print_result.assert_called_once()
+        assert mock_print_result.call_args[1]["is_detected"] is True
+
     def test_extract_and_save_by_job_below_threshold(
         self, temp_dir, sample_personal_access_df, mocker
     ):
-        mocker.patch("src.checkers.personal_file_checker.print_result")
+        mock_print_result = mocker.patch(
+            "src.checkers.personal_file_checker.print_result"
+        )
 
         df = sample_personal_access_df.copy()
         save_path = os.path.join(temp_dir, "test.xlsx")
         pfc._extract_and_save_by_job(df, save_path, "조회", 1000, "수행업무")
+
+        # Verify file was NOT created
+        assert not os.path.exists(save_path)
+        # Verify print_result was called with no detection
+        mock_print_result.assert_called_once_with(
+            is_detected=False, description="조회 1000건 이상"
+        )
 
     def test_extract_and_save_by_job_missing_columns(self, sample_personal_access_df):
         df = sample_personal_access_df.drop(columns=["교직원ID"])

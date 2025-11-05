@@ -16,7 +16,7 @@ repos:
     rev: v1.18.2
     hooks:
     -   id: mypy
-        additional_dependencies: [types-python-dateutil]
+        additional_dependencies: [types-python-dateutil, pandas-stubs, types-openpyxl]
         pass_filenames: false
         args: [--namespace-packages, -p, src]
 -   repo: https://github.com/PyCQA/bandit
