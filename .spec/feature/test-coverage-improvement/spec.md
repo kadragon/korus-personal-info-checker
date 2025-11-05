@@ -1,3 +1,15 @@
+---
+spec_id: SPEC-test-coverage-improvement-1
+agents:
+  base_profile: profiles/python-cli.md
+  project_profile: profiles/python-cli@2025-11-06.md
+  catalogs:
+    errors: catalogs/errors.md
+    quality: catalogs/quality.md
+deltas:
+  coverage_target: { line: 90, branch: 80 }
+---
+
 # Test Coverage Improvement (84% → 90%)
 
 **Intent:** Increase test coverage from 84% to 90% by adding tests for uncovered code paths in display.py, main.py, and utils.py
