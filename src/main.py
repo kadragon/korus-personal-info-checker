@@ -72,7 +72,7 @@ def discover_and_run_checkers(
     return total_count
 
 
-def main():
+def main() -> None:
     """
     Main function to execute the data inspection process.
 

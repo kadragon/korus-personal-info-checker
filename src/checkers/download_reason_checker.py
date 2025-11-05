@@ -11,8 +11,9 @@ saves the filtered results to separate Excel files.
 """
 
 import os
+from collections.abc import Callable
 from datetime import datetime
-from typing import cast
+from typing import Any, cast
 
 import pandas as pd
 
@@ -25,7 +26,7 @@ from ..utils import (
 )
 
 
-def _unique_char_count_below_5(text_input) -> bool:
+def _unique_char_count_below_5(text_input: Any) -> bool:
     """
     Checks if the number of unique characters in the given string is 5 or fewer.
     This is used to identify potentially suspicious or insufficiently explained
@@ -85,7 +86,7 @@ def run_check(download_dir: str, save_dir: str, prev_month: str) -> int:
     if df is None:
         return 0
 
-    checks_to_run = [
+    checks_to_run: list[dict[str, Callable[[pd.DataFrame], pd.DataFrame] | str]] = [
         {
             "function": _check_download_sayu,
             "suffix": cfg.DOWNLOAD_REASON_INVALID_REASON_SUFFIX,
@@ -123,9 +124,13 @@ def run_check(download_dir: str, save_dir: str, prev_month: str) -> int:
             save_dir,
             f"{cfg.DOWNLOAD_REASON_REPORT_BASE}({check['suffix']})_{prev_month}.xlsx",
         )
+        check_func = check["function"]
+        if not callable(check_func):
+            # Skip non-callable entries (should not happen with current structure)
+            continue
         run_and_save_check(
             df=df,
-            check_func=check["function"],
+            check_func=check_func,
             save_path=save_path,
             result_description=str(check["description"]),
         )

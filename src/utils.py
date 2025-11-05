@@ -7,6 +7,7 @@ and preparing specific Excel files to process.
 
 import os
 import zipfile
+from collections.abc import Callable
 from datetime import datetime
 
 import holidays
@@ -64,7 +65,7 @@ def make_save_dir(base_save_dir: str) -> str:
     return save_dir
 
 
-def save_excel_with_autofit(df: pd.DataFrame, path: str):
+def save_excel_with_autofit(df: pd.DataFrame, path: str) -> None:
     """
     Saves a Pandas DataFrame to an Excel file and auto-fits the column widths.
 
@@ -82,7 +83,7 @@ def save_excel_with_autofit(df: pd.DataFrame, path: str):
         print_error("활성 워크시트를 찾을 수 없어 열 너비를 자동 맞춤할 수 없습니다.")
         return
 
-    for idx, column_cells in enumerate(ws.columns):  # type: ignore
+    for idx, column_cells in enumerate(ws.columns):
         max_length = 0
         column_letter = get_column_letter(idx + 1)
 
@@ -95,7 +96,7 @@ def save_excel_with_autofit(df: pd.DataFrame, path: str):
                 print_error(f"[열 너비 자동 맞춤] {cell.coordinate}에서 예외 발생: {e}")
 
         adjusted_width = max_length + 2 if max_length > 0 else 10
-        ws.column_dimensions[column_letter].width = adjusted_width  # type: ignore
+        ws.column_dimensions[column_letter].width = adjusted_width
 
     wb.save(path)
     wb.close()
@@ -222,7 +223,7 @@ def find_and_prepare_excel_file(
     return merged_df, destination_save_path
 
 
-def zip_files_by_prefix(target_dir: str, prefix_list: list[str]):
+def zip_files_by_prefix(target_dir: str, prefix_list: list[str]) -> None:
     """
     Creates zip archives grouped by prefix.
 
@@ -303,10 +304,10 @@ def filter_by_time_conditions(
 
 def run_and_save_check(
     df: pd.DataFrame,
-    check_func,
+    check_func: Callable[[pd.DataFrame], pd.DataFrame],
     save_path: str,
     result_description: str,
-):
+) -> None:
     """
     Runs the check function, saves the result to an Excel file if any, and
     outputs a status message.

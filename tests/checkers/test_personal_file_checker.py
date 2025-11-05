@@ -1,8 +1,17 @@
+"""
+Tests for personal_file_checker module.
+
+GENERATED FROM SPEC-test-coverage-improvement-1
+Trace: SPEC-test-coverage-improvement-1, TEST-personal-file-checker-1
+"""
+
 import os
 
+import openpyxl
 import pandas as pd
 import pytest
 
+from src import config as cfg
 from src.checkers import personal_file_checker as pfc
 
 
@@ -81,6 +90,45 @@ class TestExtractAndSaveByJob:
 
         with pytest.raises(ValueError):
             pfc._extract_and_save_by_job(df, "path", "조회", 100, "수행업무")
+
+    def test_extract_and_save_by_job_long_sheet_name(
+        self, temp_dir, sample_personal_access_df, mocker
+    ):
+        """Test _extract_and_save_by_job with very long employee name (line 236)."""
+        mocker.patch(
+            "src.checkers.personal_file_checker.print_result"
+        )
+
+        df = sample_personal_access_df.copy()
+        # Create a very long name that will exceed SHEET_NAME_MAX_CHARS (31)
+        very_long_name = "매우긴이름을가진직원입니다정말로긴이름"
+        df.loc[0, "성명"] = very_long_name
+        df.loc[0, "교직원ID"] = "employee123456"
+
+        # Add more rows to exceed threshold
+        for _ in range(1000):
+            new_row = df.iloc[0].copy()
+            df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+
+        save_path = os.path.join(temp_dir, "test.xlsx")
+        pfc._extract_and_save_by_job(df, save_path, "조회", 100, "수행업무")
+
+        # Verify file was created
+        assert os.path.exists(save_path)
+
+        # Verify sheet name was truncated
+        # Read the Excel file and check sheet names
+        wb = openpyxl.load_workbook(save_path)
+        sheet_names = wb.sheetnames
+
+        # At least one sheet should exist
+        assert len(sheet_names) > 0
+
+        # Check that all sheet names are within the max length
+        for sheet_name in sheet_names:
+            assert len(sheet_name) <= cfg.SHEET_NAME_MAX_CHARS
+
+        wb.close()
 
 
 class TestRunCheck:

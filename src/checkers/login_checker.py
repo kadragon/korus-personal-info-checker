@@ -10,6 +10,7 @@ to separate Excel files.
 """
 
 import os
+from collections.abc import Callable
 from datetime import datetime
 
 import pandas as pd
@@ -67,7 +68,7 @@ def run_check(download_dir: str, save_dir: str, prev_month: str) -> int:
     if cfg.COL_IP not in df.columns:
         raise ValueError(f"'{cfg.COL_IP}' 컬럼을 찾을 수 없습니다.")
 
-    checks_to_run = [
+    checks_to_run: list[dict[str, Callable[[pd.DataFrame], pd.DataFrame] | str]] = [
         {
             "function": _filter_ip_switch,
             "suffix": cfg.LOGIN_REPORT_IP_SWITCH_SUFFIX,
@@ -109,9 +110,13 @@ def run_check(download_dir: str, save_dir: str, prev_month: str) -> int:
             save_dir,
             f"{cfg.LOGIN_CHECK_REPORT_BASE}({check['suffix']})_{prev_month}.xlsx",
         )
+        check_func = check["function"]
+        if not callable(check_func):
+            # Skip non-callable entries (should not happen with current structure)
+            continue
         run_and_save_check(
             df=df,
-            check_func=check["function"],
+            check_func=check_func,
             save_path=save_path,
             result_description=str(check["description"]),
         )

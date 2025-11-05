@@ -12,17 +12,19 @@ from rich.text import Text
 console = Console(markup=True)
 
 
-def print_header(title: str):
+def print_header(title: str) -> None:
     """Prints the program's main header."""
     console.rule(f"[bold cyan]{title}[/bold cyan]", style="cyan")
 
 
-def print_checker_header(title: str):
+def print_checker_header(title: str) -> None:
     """Prints the header for each checker."""
     console.print(Text(f"\n--- {title} 검사 ---", style="bold yellow"), justify="left")
 
 
-def print_result(is_detected: bool, description: str, filename: str | None = None):
+def print_result(
+    is_detected: bool, description: str, filename: str | None = None
+) -> None:
     """
     Outputs the inspection result in [Good] or [Detected] format.
     If detected, also outputs the related filename.
@@ -37,7 +39,7 @@ def print_result(is_detected: bool, description: str, filename: str | None = Non
     console.print(f"  {status} {message}")
 
 
-def print_summary(folder_path: str, total_count: int | None = None):
+def print_summary(folder_path: str, total_count: int | None = None) -> None:
     """Outputs the final summary message after all tasks are completed."""
 
     summary_text = "[bold green]모든 작업이 완료되었습니다.[/bold green]\n\n"
@@ -57,28 +59,28 @@ def print_summary(folder_path: str, total_count: int | None = None):
     )
 
 
-def print_error(message: str):
+def print_error(message: str) -> None:
     """Outputs an error message."""
     console.print(f"[bold red]오류:[/bold red] {message}")
 
 
-def print_info(message: str):
+def print_info(message: str) -> None:
     """Outputs a simple information message."""
     console.print(f"[cyan]▶[/cyan] {message}")
 
 
-def print_zip_header():
+def print_zip_header() -> None:
     """Outputs the compression task header."""
     console.print(Text("\n--- 압축 작업 시작 ---", style="bold yellow"), justify="left")
 
 
-def print_zip_result(zip_name: str, num_files: int):
+def print_zip_result(zip_name: str, num_files: int) -> None:
     """Outputs the compression task result."""
     console.print(
         f"  [bold green]OK[/bold green] {zip_name} 생성 ({num_files}개 파일 포함)"
     )
 
 
-def print_zip_warning(prefix: str):
+def print_zip_warning(prefix: str) -> None:
     """Outputs a warning when there are no files to compress."""
     console.print(f"  [yellow]WARNING[/yellow] {prefix}로 시작하는 파일 없음")
