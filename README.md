@@ -60,7 +60,7 @@ SAVE_DIR=/path/to/save/reports
 ### 기본 실행
 
 ```bash
-python src/main.py
+python -m src.main
 ```
 
 실행 시 이전 달(YYYYMM)의 로그를 자동으로 분석하며, 다음과 같은 출력을 표시합니다:
@@ -101,6 +101,46 @@ python src/main.py
 - 로그인 기록: `사용자접속내역_Login내역_YYYYMM.xlsx`
 - 개인 파일 접근: `개인정보 접속기록 조회_YYYYMM.xlsx`
 
+### 입력 데이터 구조
+
+#### 로그인 기록 (사용자접속내역_Login내역_YYYYMM.xlsx)
+
+- 대학명
+- 부서코드
+- 부서명
+- 신분번호 (교직원ID로 표준화)
+- 성명
+- 로그인유형
+- 로그아웃유형
+- 접근일시 (접속일시로 표준화)
+- 로그아웃일시
+- IP
+
+#### 개인 파일 접근 (개인정보 접속기록 조회_YYYYMM.xlsx)
+
+- 대학명
+- 부서코드
+- 부서명
+- 신분번호 (교직원ID로 표준화)
+- 성명
+- 프로그램명
+- 상세내용
+- 수행업무
+- 접근일시 (접속일시로 표준화)
+
+#### 다운로드 사유 (개인정보 다운로드 사유_YYYYMM.xlsx)
+
+- 대학명
+- 부서코드
+- 부서명
+- 신분번호 (교직원ID로 표준화)
+- 성명
+- 다운로드사유
+- 다운로드데이터수(건)
+- 접근일시 (접속일시로 표준화)
+
+**참고**: 입력 파일의 컬럼명이 다를 경우 자동으로 표준화됩니다 (예: "신분번호" → "교직원ID", "접근일시" → "접속일시").
+
 ### 출력 결과
 
 - 각 검사별 필터링된 결과 Excel 파일
@@ -138,13 +178,19 @@ korus-personal-info-checker/
 ### 테스트 실행
 
 ```bash
+# 개발 의존성 설치
+pip install -e .[dev]
+
+# 또는 uv 사용
+uv sync --extra dev
+
+# 단위 테스트 및 커버리지
+pytest --cov=src --cov-report=term-missing
+
 # 정적 분석
 ruff check src/
 mypy src/
 bandit -r src/
-
-# 개발 의존성 설치
-pip install -e .[dev]
 ```
 
 ### 기여 방법

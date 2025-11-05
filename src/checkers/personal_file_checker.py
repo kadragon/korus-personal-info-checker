@@ -16,9 +16,9 @@ from datetime import datetime
 
 import pandas as pd
 
-import config as cfg
-from display import print_checker_header, print_result
-from utils import find_and_prepare_excel_file, run_and_save_check
+from .. import config as cfg
+from ..display import print_checker_header, print_result
+from ..utils import find_and_prepare_excel_file, run_and_save_check
 
 
 def run_check(download_dir: str, save_dir: str, prev_month: str) -> int:
@@ -155,6 +155,9 @@ def _filter_by_job_master_exclude_detail_id(df: pd.DataFrame) -> pd.DataFrame:
     # '인사마스터' 프로그램 접근 기록 중, 본인 조회가 아닌 경우만 필터링합니다.
     # 조건 1: '프로그램명'이 '인사마스터'인 기록만 선택합니다.
     hr_master_df = df[df[cfg.COL_PROGRAM_NAME] == "인사마스터"].copy()
+
+    if hr_master_df.empty:
+        return hr_master_df
 
     # 조건 2: '상세내용'에 자신의 '직원ID'가 포함되어 있지 않은 기록만 남깁니다.
     #         (즉, 타인 조회 기록만 필터링)

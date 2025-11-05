@@ -15,8 +15,8 @@ import pandas as pd
 from dateutil.relativedelta import relativedelta
 from openpyxl.utils import get_column_letter
 
-import config as cfg
-from display import (
+from . import config as cfg
+from .display import (
     print_error,
     print_info,
     print_result,
@@ -224,8 +224,10 @@ def find_and_prepare_excel_file(
 
 def zip_files_by_prefix(target_dir: str, prefix_list: list[str]):
     """
-    Creates zip archives using the part before '_' in filenames
-    (e.g., Attachment N ...) as the zip name.
+    Creates zip archives grouped by prefix.
+
+    The archive name is derived from the provided prefix when available,
+    falling back to the legacy filename-based heuristic otherwise.
     """
     files = [f for f in os.listdir(target_dir) if f.endswith(".xlsx")]
 
@@ -235,7 +237,9 @@ def zip_files_by_prefix(target_dir: str, prefix_list: list[str]):
             print_zip_warning(prefix)
             continue
 
-        group_name = matched[0].split("_")[0].split("(")[0]
+        # Use the full prefix as the zip file name
+        # (e.g., "[붙임2] 코러스 사용자 접근 기록.zip")
+        group_name = prefix
         zip_name = f"{group_name}.zip"
         zip_path = os.path.join(target_dir, zip_name)
 

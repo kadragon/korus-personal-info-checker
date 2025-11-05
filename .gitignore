@@ -10,3 +10,7 @@ wheels/
 .venv
 
 .env
+.coverage
+
+# Claude Code
+.claude

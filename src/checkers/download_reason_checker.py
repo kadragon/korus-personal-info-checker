@@ -16,9 +16,9 @@ from typing import cast
 
 import pandas as pd
 
-import config as cfg
-from display import print_checker_header
-from utils import (
+from .. import config as cfg
+from ..display import print_checker_header
+from ..utils import (
     filter_by_time_conditions,
     find_and_prepare_excel_file,
     run_and_save_check,
