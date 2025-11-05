@@ -178,7 +178,7 @@ def _filter_by_job_master_exclude_detail_id(df: pd.DataFrame) -> pd.DataFrame:
 
 def _extract_and_save_by_job(
     df: pd.DataFrame, save_path: str, job: str, threshold: int, job_column_name: str
-):
+) -> None:
     """
     Identifies users who performed a specific `job` (e.g., 'query', 'save')
     more than `threshold` times.

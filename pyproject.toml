@@ -24,9 +24,14 @@ line-length = 88
 select = ["E", "F", "I", "B", "C4", "SIM"]
 
 [tool.mypy]
-mypy_path = "src"
+mypy_path = "."
+packages = ["src"]
 explicit_package_bases = true
 namespace_packages = true
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
 
 [[tool.mypy.overrides]]
 module = [
