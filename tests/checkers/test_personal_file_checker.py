@@ -7,11 +7,12 @@ Trace: SPEC-test-coverage-improvement-1, TEST-personal-file-checker-1
 
 import os
 
+import openpyxl
 import pandas as pd
 import pytest
 
-from src.checkers import personal_file_checker as pfc
 from src import config as cfg
+from src.checkers import personal_file_checker as pfc
 
 
 class TestFilterByJobMasterExcludeDetailId:
@@ -94,7 +95,7 @@ class TestExtractAndSaveByJob:
         self, temp_dir, sample_personal_access_df, mocker
     ):
         """Test _extract_and_save_by_job with very long employee name (line 236)."""
-        mock_print_result = mocker.patch(
+        mocker.patch(
             "src.checkers.personal_file_checker.print_result"
         )
 
@@ -117,7 +118,6 @@ class TestExtractAndSaveByJob:
 
         # Verify sheet name was truncated
         # Read the Excel file and check sheet names
-        import openpyxl
         wb = openpyxl.load_workbook(save_path)
         sheet_names = wb.sheetnames
 

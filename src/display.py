@@ -22,7 +22,9 @@ def print_checker_header(title: str) -> None:
     console.print(Text(f"\n--- {title} 검사 ---", style="bold yellow"), justify="left")
 
 
-def print_result(is_detected: bool, description: str, filename: str | None = None) -> None:
+def print_result(
+    is_detected: bool, description: str, filename: str | None = None
+) -> None:
     """
     Outputs the inspection result in [Good] or [Detected] format.
     If detected, also outputs the related filename.

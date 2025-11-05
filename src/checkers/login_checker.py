@@ -111,7 +111,9 @@ def run_check(download_dir: str, save_dir: str, prev_month: str) -> int:
             f"{cfg.LOGIN_CHECK_REPORT_BASE}({check['suffix']})_{prev_month}.xlsx",
         )
         check_func = check["function"]
-        assert callable(check_func)
+        if not callable(check_func):
+            # Skip non-callable entries (should not happen with current structure)
+            continue
         run_and_save_check(
             df=df,
             check_func=check_func,

@@ -5,8 +5,6 @@ GENERATED FROM SPEC-test-coverage-improvement-1
 Trace: SPEC-test-coverage-improvement-1, TEST-display-1
 """
 
-import pytest
-from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 
@@ -31,7 +29,7 @@ class TestPrintCheckerHeader:
     """Tests for print_checker_header function."""
 
     def test_print_checker_header(self, mocker):
-        """Test that print_checker_header calls console.print with correct Text object."""
+        """Test print_checker_header calls console.print with correct Text."""
         mock_print = mocker.patch.object(display.console, "print")
 
         display.print_checker_header("로그인")

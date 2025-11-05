@@ -63,15 +63,17 @@ class TestSaveExcelWithAutofit:
         # Mock load_workbook to return a workbook with no active worksheet
         mock_wb = mocker.MagicMock()
         mock_wb.active = None
-        mock_load = mocker.patch("openpyxl.load_workbook", return_value=mock_wb)
+        mocker.patch("openpyxl.load_workbook", return_value=mock_wb)
 
         # This should handle the None case gracefully
         utils.save_excel_with_autofit(df, path)
 
         mock_wb.close.assert_called_once()
 
-    def test_save_excel_with_autofit_cell_exception(self, temp_dir, mocker, capsys):
-        """Test save_excel_with_autofit when cell processing raises exception (lines 95-96)."""
+    def test_save_excel_with_autofit_cell_exception(
+        self, temp_dir, mocker, capsys
+    ):
+        """Test save_excel_with_autofit cell exception (lines 95-96)."""
         df = pd.DataFrame({"A": [1, 2, 3]})
         path = os.path.join(temp_dir, "test.xlsx")
 
@@ -105,7 +107,7 @@ class TestSaveExcelWithAutofit:
         utils.save_excel_with_autofit(df, path)
 
         # Check that error was printed
-        captured = capsys.readouterr()
+        capsys.readouterr()
         # The function should continue despite the error and call save/close
         mock_wb.save.assert_called_once()
         mock_wb.close.assert_called_once()
@@ -152,7 +154,7 @@ class TestMergeAndPreprocessFiles:
     def test_merge_and_preprocess_files_xls_format(self, temp_dir, mocker):
         """Test _merge_and_preprocess_files with .xls file (line 130)."""
         df = pd.DataFrame({"접속일시": ["2023-09-01 10:00:00"], "교번": ["12345"]})
-        file_path = os.path.join(temp_dir, "test.xls")
+        os.path.join(temp_dir, "test.xls")
 
         # Since xlwt is not installed, we'll mock the read_excel call
         # to simulate reading an .xls file
@@ -163,7 +165,7 @@ class TestMergeAndPreprocessFiles:
         # Verify that read_excel was called with engine="xlrd" for .xls files
         mock_read.assert_called_once()
         call_args = mock_read.call_args
-        assert "engine" in call_args[1] or call_args[1].get("engine") == "xlrd" or True
+        assert call_args.kwargs.get("engine") == "xlrd"
 
         assert result is not None
 
@@ -182,7 +184,7 @@ class TestMergeAndPreprocessFiles:
         assert "오류 발생" in captured.out or len(captured.out) > 0
 
     def test_merge_and_preprocess_files_empty_list_after_read(self, temp_dir):
-        """Test _merge_and_preprocess_files when all_dfs is empty after read (line 143)."""
+        """Test _merge_and_preprocess_files empty all_dfs (line 143)."""
         # This case is already covered by test_merge_and_preprocess_files_no_files
         # but we can verify it explicitly
         result = utils._merge_and_preprocess_files([], temp_dir)
@@ -218,7 +220,7 @@ class TestMergeAndPreprocessFiles:
         assert "경고" in captured.out or "교번" in captured.out
 
     def test_merge_and_preprocess_files_sinbun_only(self, temp_dir):
-        """Test renaming '신분번호' to '교직원ID' when only sinbun exists (lines 169-170)."""
+        """Test renaming '신분번호' to '교직원ID' (lines 169-170)."""
         df = pd.DataFrame({
             "접속일시": ["2023-09-01 10:00:00"],
             "신분번호": ["67890"]
