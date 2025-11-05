@@ -2,23 +2,11 @@
 
 ## 2025/Q4
 
-- **data-count-sum-and-output-fix**: Data count sum display and output style
-  fix
-  - Goal: Display sum of original data counts for attachments 2,3,4 and fix
-    output style
-  - Key changes: Each checker function returns int, main.py calculates sum,
-    display.py enables markup
+- Task 2025-10-01: Data Count Sum and Output Fix (SPEC-data-count-sum-output-1)  
+  Stored at `.tasks/_archive/2025/Q4/task-2025-10-01-data-count-sum-output.md`.
 
-- **fix-rich-markup-error**: Fix Rich markup error by adding library
-  - Goal: Fix `Text(markup=True)` parameter error in `print_summary` function
-    in `src/display.py`
-  - Key changes: Add `rich>=13.0.0` to `pyproject.toml`, install library
+- Task 2025-10-01: Fix Rich Markup Error (SPEC-fix-rich-markup-error-1)  
+  Stored at `.tasks/_archive/2025/Q4/task-2025-10-01-fix-rich-markup-error.md`.
 
-- **write-readme-md**: Comprehensive README.md writing
-  - Goal: Replace simple README.md with comprehensive project documentation
-  - Key changes: Add project overview, features, installation, usage,
-    structure, development info
-
-- **add-tests**: Add comprehensive unit and integration tests
-  - Goal: Achieve >80% test coverage, ensure reliability of checker functions
-  - Key changes: Add pytest/pytest-cov, create tests/ dir, write tests for utils, checkers, main
+- Task 2025-10-01: Rewrite README.md (SPEC-write-readme-1)  
+  Stored at `.tasks/_archive/2025/Q4/task-2025-10-01-write-readme.md`.

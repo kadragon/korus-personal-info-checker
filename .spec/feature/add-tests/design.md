@@ -1,0 +1,4 @@
+Context: Existing project lacked automated tests; production modules rely on filesystem, pandas, and datetime operations.
+Approach: Introduce pytest fixtures providing temporary directories, sample DataFrames, and mocks for datetime/importlib; structure tests mirroring `src` package; enforce coverage thresholds via `pytest-cov`. Pros: encourages TDD, regression safety. Cons: Coverage threshold currently unmet (78%), additional fixtures may increase maintenance.
+Diagram: C4 L3 (text) → CLI Runner (`pytest`) → Test Modules (`tests/*`) → Target Modules (`src/utils.py`, `src/checkers/*.py`, `src/main.py`) with mocked boundaries (filesystem, datetime, Rich console).
+Fallback/Rollback: Remove tests directory additions and revert `pyproject.toml` dev dependencies if suite destabilises; disable coverage gate temporarily by setting `--cov-fail-under` lower (not recommended).
