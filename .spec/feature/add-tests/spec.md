@@ -1,3 +1,15 @@
+---
+spec_id: SPEC-add-tests-1
+agents:
+  base_profile: profiles/python-cli.md
+  project_profile: profiles/python-cli@2025-11-06.md
+  catalogs:
+    errors: catalogs/errors.md
+    quality: catalogs/quality.md
+deltas:
+  coverage_target: { line: 80, branch: 70 }
+---
+
 # Test Suite Expansion
 Intent: Establish automated test coverage for korus-personal-info-checker.
 Scope: In: add pytest-based unit and integration tests covering `src` package behaviour, configure coverage tooling. Out: refactoring production code beyond test seams, CI workflow authoring.

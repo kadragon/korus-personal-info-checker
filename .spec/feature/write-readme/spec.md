@@ -1,3 +1,11 @@
+---
+spec_id: SPEC-write-readme-1
+agents:
+  base_profile: profiles/python-cli.md
+  project_profile: profiles/python-cli@2025-11-06.md
+deltas: {}
+---
+
 # README Overhaul
 Intent: Provide comprehensive English documentation so operators can install and run korus-personal-info-checker confidently.
 Scope: In: rewrite `README.md` with project overview, setup, usage, structure, development practices. Out: generating additional guides or API references.

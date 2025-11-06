@@ -1,3 +1,14 @@
+---
+spec_id: SPEC-fix-rich-markup-error-1
+agents:
+  base_profile: profiles/python-cli.md
+  project_profile: profiles/python-cli@2025-11-06.md
+  catalogs:
+    errors: catalogs/errors.md
+deltas:
+  rich_version: ">=13.0.0"
+---
+
 # Rich Markup Compatibility Fix
 Intent: Ensure Rich-based summary rendering supports `Text(markup=True)` without raising constructor errors.
 Scope: In: upgrade Rich dependency, verify console instantiation supports markup. Out: redesigning output formatting beyond enabling markup support.

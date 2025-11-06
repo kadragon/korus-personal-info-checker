@@ -1,3 +1,15 @@
+---
+spec_id: SPEC-data-count-sum-output-1
+agents:
+  base_profile: profiles/python-cli.md
+  project_profile: profiles/python-cli@2025-11-06.md
+  catalogs:
+    errors: catalogs/errors.md
+  patterns:
+    data-pipeline: patterns/data-pipeline.md
+deltas: {}
+---
+
 # Data Count Summary Output
 Intent: Surface total original record counts in the CLI summary for attachments 2–4.
 Scope: In: adjust checker return contracts, aggregate counts in `main.py`, enable styled summary output. Out: modifying checker detection logic or additional report formats.

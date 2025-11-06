@@ -1,3 +1,14 @@
+---
+spec_id: SPEC-bandit-config-1
+agents:
+  base_profile: profiles/python-cli.md
+  project_profile: profiles/python-cli@2025-11-06.md
+  catalogs:
+    security: catalogs/security.md
+deltas:
+  bandit_exclude: ["tests", ".venv"]
+---
+
 # Bandit Test Exclusion Configuration
 Intent: Prevent Bandit runs from analysing test fixtures that intentionally use `assert`, avoiding false positives while keeping application code fully scanned.
 Scope: In: Bandit configuration files (`.bandit`, `bandit.yaml`). Out: Runtime behaviour changes, production code modifications.
