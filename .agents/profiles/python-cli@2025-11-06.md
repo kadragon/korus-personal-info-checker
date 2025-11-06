@@ -1,6 +1,6 @@
 # KORUS Personal Info Checker Profile
 **Version**: 2025-11-06
-**Base Profile**: global/profiles/python-cli.md
+**Base Profile**: profiles/python-cli.md
 
 ## Project Overview
 Python CLI tool for analyzing access log records from KORUS Personal Information Processing System to detect suspected cases of personal information misuse.
@@ -118,15 +118,15 @@ SAVE_DIR=/path/to/reports         # Output directory
 ## Profiles & Catalogs
 
 ### Applied Profiles
-- `global/profiles/python-cli.md` - Base Python CLI patterns
+- `profiles/python-cli.md` - Base Python CLI patterns
 
 ### Applied Catalogs
-- `global/catalogs/errors.md` - Error handling standards
-- `global/catalogs/security.md` - Security rules (PIPA compliance)
-- `global/catalogs/quality.md` - Code quality standards
+- `catalogs/errors.md` - Error handling standards
+- `catalogs/security.md` - Security rules (PIPA compliance)
+- `catalogs/quality.md` - Code quality standards
 
 ### Applied Patterns
-- `global/patterns/data-pipeline.md` - Data processing pipeline
+- `patterns/data-pipeline.md` - Data processing pipeline
 
 ## Project-Specific Deltas
 

@@ -95,7 +95,7 @@ Active specs in `.spec/feature/`:
 - `write-readme/` - Documentation (ARCHIVED)
 
 ## Profiles & Standards
-See `.agents/projects/korus-personal-info-checker/profiles/python-cli@2025-11-06.md` for:
+See `.agents/profiles/python-cli@2025-11-06.md` for:
 - Architecture patterns
 - Quality standards
 - Security requirements

@@ -208,7 +208,8 @@ See `AGENTS.md.backup` for original flat structure and changelog.
 - **Latest Log**: `.tasks/log-2025-11-06.md`
 
 ### External Documentation
-- [SDD×TDD Framework](~/.claude/CLAUDE.md) - Global system prompt
+
+- **SDD×TDD Framework** - See global system prompt for framework details
 - [Python CLI Profile](profiles/python-cli.md) - Base standards
 - [Data Pipeline Pattern](patterns/data-pipeline.md) - Architecture patterns
 

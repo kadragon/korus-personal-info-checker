@@ -6,7 +6,7 @@ agents:
   catalogs:
     errors: catalogs/errors.md
   patterns:
-    data-pipeline: global/patterns/data-pipeline.md
+    data-pipeline: patterns/data-pipeline.md
 deltas: {}
 ---
 
