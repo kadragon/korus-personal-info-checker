@@ -1,21 +1,26 @@
 # Project Ownership
 
 ## Primary Maintainer
+
 - **GitHub**: @kadragon
 - **Role**: Project Lead, Primary Developer
 - **Responsibilities**: Architecture, feature development, code review
 
 ## Review Requirements
+
 - All changes require maintainer review
 - Critical changes (security, architecture) require extended review
 
 ## Escalation
+
 For questions or issues:
+
 1. Create GitHub issue in project repository
 2. Tag @kadragon for maintainer attention
 3. For urgent matters, contact via organization channels
 
 ## Contribution Guidelines
+
 1. Fork repository and create feature branch
 2. Follow SDD×TDD workflow (see .agents/profiles/)
 3. Ensure all tests pass and coverage maintained
@@ -23,6 +28,7 @@ For questions or issues:
 5. Wait for maintainer review and approval
 
 ## Code Review Standards
+
 - Code quality gates must pass (ruff, mypy, bandit)
 - Test coverage ≥80%
 - Spec traceability maintained

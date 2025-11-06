@@ -1,0 +1,5 @@
+# markdownlint ignore file
+# Exclude SDD/TDD framework directories
+.agents/
+.spec/
+.tasks/
