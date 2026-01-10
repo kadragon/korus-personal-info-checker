@@ -39,6 +39,22 @@ def get_prev_month_yyyymm() -> str:
     return prev_month_date.strftime("%Y%m")
 
 
+def _ensure_dir(path: str) -> str:
+    """
+    Creates a directory if it doesn't exist and prints a message.
+
+    Parameters:
+        path (str): The directory path to ensure exists.
+
+    Returns:
+        str: The same path that was passed in.
+    """
+    if not os.path.exists(path):
+        os.makedirs(path, exist_ok=True)
+        print(f"폴더 생성: {path}")
+    return path
+
+
 def make_save_dir(base_save_dir: str) -> str:
     """
     Creates a subdirectory named after the previous month (YYYYMM) within
@@ -56,13 +72,7 @@ def make_save_dir(base_save_dir: str) -> str:
     """
     prev_month_str = get_prev_month_yyyymm()
     save_dir = os.path.join(base_save_dir, prev_month_str)
-
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir, exist_ok=True)
-        # 이 함수는 메인 헤더가 인쇄되기 전에 호출되므로 간단한 인쇄가 더 좋습니다.
-        print(f"폴더 생성: {save_dir}")
-
-    return save_dir
+    return _ensure_dir(save_dir)
 
 
 def make_korus_save_dir(download_dir: str, prev_month_str: str) -> str:
@@ -77,12 +87,7 @@ def make_korus_save_dir(download_dir: str, prev_month_str: str) -> str:
         str: The full path to the created or existing korus directory.
     """
     save_dir = os.path.join(download_dir, f"korus_{prev_month_str}")
-
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir, exist_ok=True)
-        print(f"폴더 생성: {save_dir}")
-
-    return save_dir
+    return _ensure_dir(save_dir)
 
 
 def save_excel_with_autofit(df: pd.DataFrame, path: str) -> None:

@@ -2,7 +2,17 @@
 Tests for launcher module.
 """
 
-from src import launcher
+import pytest
+
+try:
+    from src import launcher
+
+    HAS_TKINTER = True
+except ImportError:
+    HAS_TKINTER = False
+    launcher = None  # type: ignore[assignment]
+
+pytestmark = pytest.mark.skipif(not HAS_TKINTER, reason="tkinter not available")
 
 
 def test_launcher_main_runs_when_selected(mocker):

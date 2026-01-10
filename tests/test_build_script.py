@@ -11,4 +11,4 @@ def test_build_windows_script_contains_pyinstaller_args():
     contents = script_path.read_text(encoding="utf-8")
     assert "pyinstaller" in contents
     assert "--collect-submodules src.checkers" in contents
-    assert "src.launcher" in contents
+    assert "src/launcher.py" in contents

@@ -4,7 +4,7 @@ Launcher script that prompts the user to select a download folder.
 
 from tkinter import Tk, filedialog
 
-from .main import run_with_download_dir
+from src.main import run_with_download_dir
 
 
 def main() -> None:
@@ -13,14 +13,15 @@ def main() -> None:
     """
     root = Tk()
     root.withdraw()
-    download_dir = filedialog.askdirectory(title="다운로드 폴더 선택")
+    try:
+        download_dir = filedialog.askdirectory(title="다운로드 폴더 선택")
 
-    if not download_dir:
+        if not download_dir:
+            return
+
+        run_with_download_dir(download_dir)
+    finally:
         root.destroy()
-        return
-
-    run_with_download_dir(download_dir)
-    root.destroy()
 
 
 if __name__ == "__main__":
