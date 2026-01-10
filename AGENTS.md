@@ -1,16 +1,15 @@
 # KORUS Personal Info Checker - Unified AGENTS
 
 Last Updated: 2025-11-06
-Framework: SDD x TDD (Spec-Driven Development x Test-Driven Development)
+Framework: TDD (Test-Driven Development)
 
 ## Project Overview
 Python CLI tool that analyzes KORUS Personal Information Processing System access logs to detect suspected personal data misuse (download reason issues, suspicious IPs, bulk access, personnel master access anomalies).
 
 ## Operating Principles (Constitution)
-- Spec is SSOT: all behavior traces back to a SPEC-ID.
 - TDD first: RED -> GREEN -> REFACTOR for every change.
 - Profiles govern: quality, security, and error-handling standards are mandatory.
-- Trace required: commits/tests/files reference SPEC-ID and TEST-ID.
+- Trace required: commits/tests/files reference TEST-ID where applicable.
 - No over-generation: produce the minimum artifacts needed.
 - Ambiguity = halt: stop and record the gap before proceeding.
 - Memory hygiene: keep active tracking concise and current.
@@ -64,24 +63,13 @@ Python CLI tool that analyzes KORUS Personal Information Processing System acces
 - Orchestrator sums checker counts; non-int counts treated as 0.
 - Prefer resilient execution: log recoverable errors, raise unexpected errors.
 
-## Specs (SSOT)
-Active/Implemented:
-- SPEC-add-tests-1 (COMPLETED 2025-11-06): pytest-based tests with coverage >=80%; traces in tests/test_*.py and tests/checkers/*.
-- SPEC-test-coverage-improvement-1 (COMPLETED 2025-11-06): display.py, main.py, utils.py coverage >=90%; personal_file_checker 100%.
-- SPEC-bandit-config-1 (IMPLEMENTED): Bandit excludes tests/ and .venv; configs in .bandit and bandit.yaml.
-
-Archived:
-- SPEC-data-count-sum-output-1 (2025-10-01): checkers return int counts; summary shows aggregate count with Rich markup.
-- SPEC-fix-rich-markup-error-1 (2025-10-01): rich >=13.0.0; Text(markup=True) supported.
-- SPEC-write-readme-1 (2025-10-01): README overhaul for setup and usage.
-
 ## Tasks
 Active/Backlog:
 - None (as of 2025-11-06).
 
 Recent Completed:
 - 2025-11-06: Test coverage improvement to 99%; lint/mypy/bandit clean.
-- 2025-10-12: Comprehensive tests (SPEC-add-tests-1, SPEC-test-coverage-improvement-1).
+- 2025-10-12: Comprehensive tests; coverage targets achieved.
 - 2025-10-01: Data count aggregation, Rich markup fix, README rewrite.
 
 DoD Checklist (TDD): failing test (RED) -> minimal pass (GREEN) -> refactor -> trace links updated.
@@ -89,4 +77,3 @@ DoD Checklist (TDD): failing test (RED) -> minimal pass (GREEN) -> refactor -> t
 ## Ownership & Review
 - Maintainer: @kadragon (Project Lead).
 - All changes require maintainer review; security/architecture changes require extended review.
-
