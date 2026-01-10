@@ -63,6 +63,20 @@ SAVE_DIR=/path/to/save/reports
 python -m src.main
 ```
 
+### Windows 실행파일 빌드/실행
+
+```powershell
+# 개발 의존성 설치
+uv sync --extra dev
+
+# 실행파일 빌드
+scripts\\build_windows.ps1
+```
+
+- 결과물: `dist\\korus-checker.exe`
+- 실행: `korus-checker.exe`를 실행하면 다운로드 폴더를 선택하고,
+  선택한 폴더 아래에 `korus_YYYYMM` 폴더를 생성해 결과를 저장합니다.
+
 실행 시 이전 달(YYYYMM)의 로그를 자동으로 분석하며, 다음과 같은 출력을 표시합니다:
 
 ```bash

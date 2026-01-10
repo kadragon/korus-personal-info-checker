@@ -65,6 +65,26 @@ def make_save_dir(base_save_dir: str) -> str:
     return save_dir
 
 
+def make_korus_save_dir(download_dir: str, prev_month_str: str) -> str:
+    """
+    Creates a directory named 'korus_YYYYMM' under the download directory.
+
+    Parameters:
+        download_dir (str): The selected download directory.
+        prev_month_str (str): Target month string in 'YYYYMM' format.
+
+    Returns:
+        str: The full path to the created or existing korus directory.
+    """
+    save_dir = os.path.join(download_dir, f"korus_{prev_month_str}")
+
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir, exist_ok=True)
+        print(f"폴더 생성: {save_dir}")
+
+    return save_dir
+
+
 def save_excel_with_autofit(df: pd.DataFrame, path: str) -> None:
     """
     Saves a Pandas DataFrame to an Excel file and auto-fits the column widths.

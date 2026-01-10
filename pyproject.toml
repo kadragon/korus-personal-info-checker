@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["ruff", "mypy", "bandit", "pandas-stubs", "types-openpyxl", "types-python-dateutil", "pre-commit", "pytest", "pytest-cov", "pytest-mock"]
+dev = ["ruff", "mypy", "bandit", "pandas-stubs", "types-openpyxl", "types-python-dateutil", "pre-commit", "pytest", "pytest-cov", "pytest-mock", "pyinstaller"]
 
 [tool.ruff]
 line-length = 88
