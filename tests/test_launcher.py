@@ -23,6 +23,7 @@ def test_launcher_main_runs_when_selected(mocker):
         return_value="C:/Downloads",
     )
     mock_run = mocker.patch("src.launcher.run_with_download_dir")
+    mocker.patch("src.launcher.wait_for_exit")
 
     launcher.main()
 
