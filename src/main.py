@@ -27,7 +27,12 @@ from .display import (
     print_summary,
     print_zip_header,
 )
-from .utils import get_prev_month_yyyymm, make_save_dir, zip_files_by_prefix
+from .utils import (
+    get_prev_month_yyyymm,
+    make_korus_save_dir,
+    make_save_dir,
+    zip_files_by_prefix,
+)
 
 # .env 파일이 있는 경우 환경 변수를 로드합니다.
 # DOWNLOAD_DIR 및 SAVE_DIR을 하드코딩하지 않고 구성하는 데 유용합니다.
@@ -72,6 +77,42 @@ def discover_and_run_checkers(
     return total_count
 
 
+def _run_inspection(
+    download_dir: str, reports_save_dir: str, prev_month_str: str
+) -> None:
+    """
+    Runs the inspection workflow: prints info, discovers/runs checkers,
+    zips results, and prints summary.
+    """
+    print_header(f"개인정보 처리 현황 자동 점검 ({prev_month_str}월분)")
+    print_info(f"원본 데이터 경로: {download_dir}")
+    print_info(f"결과 저장 경로: {reports_save_dir}")
+
+    total_count = discover_and_run_checkers(
+        download_dir, reports_save_dir, prev_month_str
+    )
+
+    print_zip_header()
+    try:
+        zip_files_by_prefix(reports_save_dir, ZIP_FILE_PREFIXES)
+    except Exception as e:
+        print_error(f"압축 작업 중 오류 발생: {e}")
+
+    print_summary(reports_save_dir, total_count)
+
+
+def run_with_download_dir(download_dir: str) -> None:
+    """
+    Executes the data inspection process using the selected download directory.
+
+    The report directory is created as a `korus_YYYYMM` folder inside the
+    selected download directory.
+    """
+    prev_month_str = get_prev_month_yyyymm()
+    reports_save_dir = make_korus_save_dir(download_dir, prev_month_str)
+    _run_inspection(download_dir, reports_save_dir, prev_month_str)
+
+
 def main() -> None:
     """
     Main function to execute the data inspection process.
@@ -95,22 +136,7 @@ def main() -> None:
 
     prev_month_str = get_prev_month_yyyymm()
     reports_save_dir = make_save_dir(base_save_dir)
-
-    print_header(f"개인정보 처리 현황 자동 점검 ({prev_month_str}월분)")
-    print_info(f"원본 데이터 경로: {download_dir}")
-    print_info(f"결과 저장 경로: {reports_save_dir}")
-
-    total_count = discover_and_run_checkers(
-        download_dir, reports_save_dir, prev_month_str
-    )
-
-    print_zip_header()
-    try:
-        zip_files_by_prefix(reports_save_dir, ZIP_FILE_PREFIXES)
-    except Exception as e:
-        print_error(f"압축 작업 중 오류 발생: {e}")
-
-    print_summary(reports_save_dir, total_count)
+    _run_inspection(download_dir, reports_save_dir, prev_month_str)
 
 
 if __name__ == "__main__":

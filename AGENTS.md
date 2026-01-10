@@ -1,6 +1,6 @@
 # KORUS Personal Info Checker - Unified AGENTS
 
-Last Updated: 2025-11-06
+Last Updated: 2026-01-10
 Framework: TDD (Test-Driven Development)
 
 ## Project Overview
@@ -14,6 +14,8 @@ Python CLI tool that analyzes KORUS Personal Information Processing System acces
 - Ambiguity = halt: stop and record the gap before proceeding.
 - Memory hygiene: keep active tracking concise and current.
 - Rollback on failure: shrink scope and log the cause.
+- Release automation: main pushes create releases using the `pyproject.toml`
+  version, so bump the version before merging to trigger a new release.
 
 ## Architecture & Data Flow
 - Pipeline: INPUT -> EXTRACT -> TRANSFORM -> DETECT -> OUTPUT.
