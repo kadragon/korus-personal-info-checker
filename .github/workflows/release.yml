@@ -25,12 +25,7 @@ jobs:
         id: version
         shell: pwsh
         run: |
-          $version = python - <<'PY'
-          import tomllib
-          from pathlib import Path
-          data = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
-          print(data["project"]["version"])
-          PY
+          $version = python -c "import tomllib; from pathlib import Path; data = tomllib.loads(Path('pyproject.toml').read_text(encoding='utf-8')); print(data['project']['version'])"
           "version=$version" >> $env:GITHUB_OUTPUT
 
       - name: Check release exists
