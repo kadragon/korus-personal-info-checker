@@ -12,3 +12,10 @@ updates:
     ignore:
       - dependency-name: "types-python-dateutil"
         update-types: ["version-update:semver-patch"]
+    groups:
+      dependencies:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
