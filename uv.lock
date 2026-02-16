@@ -155,14 +155,14 @@ wheels = [
 
 [[package]]
 name = "holidays"
-version = "0.90"
+version = "0.91"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "python-dateutil" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3f/4e/c64742eaa810523995cc9c7cd97d7a6c16de5544bbe55a1ccd7107418feb/holidays-0.90.tar.gz", hash = "sha256:1fb6a973d9c8834a9b6644fcf369b0663373daa0d06bce5ae37d494e702dfb3f", size = 834130, upload-time = "2026-02-02T18:48:17.852Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8c/18/56c8ca94290dba711c6bf5e539a964587fc8e5c765332687c3dd352f8483/holidays-0.91.tar.gz", hash = "sha256:beef593bb2792b3e2f7e63ab9ec5c46e93071d8c27489d14f8911b50e8f0686e", size = 835483, upload-time = "2026-02-16T21:24:07.4Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9b/3d/e3d23cb51f6353931436df4e9d1d4873311d0ed50d273ef1531bdd074958/holidays-0.90-py3-none-any.whl", hash = "sha256:8ed92ea72e2db5ef00f024c37b03641085699809f42fe5ba03b040be6740f72d", size = 1353734, upload-time = "2026-02-02T18:48:16.138Z" },
+    { url = "https://files.pythonhosted.org/packages/5a/2b/deac3e0898767aed18a39906c4aa9627d97d6e86546b249ce4df9a0e53c5/holidays-0.91-py3-none-any.whl", hash = "sha256:797834bc48d8e714528575739cb981342525fa7515b24d252160763c3a2b3d7c", size = 1372624, upload-time = "2026-02-16T21:24:05.523Z" },
 ]
 
 [[package]]
@@ -220,7 +220,7 @@ dev = [
 requires-dist = [
     { name = "bandit", specifier = "==1.9.3" },
     { name = "bandit", marker = "extra == 'dev'" },
-    { name = "holidays", specifier = "==0.90" },
+    { name = "holidays", specifier = "==0.91" },
     { name = "mypy", marker = "extra == 'dev'" },
     { name = "openpyxl", specifier = ">=3.1.5" },
     { name = "pandas", specifier = ">=2.2.3" },
