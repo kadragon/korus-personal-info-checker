@@ -75,7 +75,6 @@ def make_save_dir(base_save_dir: str) -> str:
     return _ensure_dir(save_dir)
 
 
-
 def save_excel_with_autofit(df: pd.DataFrame, path: str) -> None:
     """
     Saves a Pandas DataFrame to an Excel file and auto-fits the column widths.

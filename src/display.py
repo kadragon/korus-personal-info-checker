@@ -84,5 +84,3 @@ def print_zip_result(zip_name: str, num_files: int) -> None:
 def print_zip_warning(prefix: str) -> None:
     """Outputs a warning when there are no files to compress."""
     console.print(f"  [yellow]WARNING[/yellow] {prefix}로 시작하는 파일 없음")
-
-
