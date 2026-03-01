@@ -166,13 +166,12 @@ def _filter_by_job_master_exclude_detail_id(df: pd.DataFrame) -> pd.DataFrame:
     sklstf_pattern = re.compile(r"sklstfNo=([^&]*)")
 
     def _is_other_access(emp_id: object, detail: object) -> bool:
-        match = sklstf_pattern.search(str(detail))
-        if not match:
+        # findall instead of search to prevent parameter-pollution bypass
+        # (e.g. sklstfNo=attacker&sklstfNo=victim would fool a single-match check)
+        sklstf_nos = sklstf_pattern.findall(str(detail))
+        if not sklstf_nos:
             return False
-        sklstf_no = match.group(1)
-        if sklstf_no == "":
-            return False
-        return str(emp_id) != str(sklstf_no)
+        return any(v != "" and str(emp_id) != v for v in sklstf_nos)
 
     is_other_access = [
         _is_other_access(emp_id, detail)

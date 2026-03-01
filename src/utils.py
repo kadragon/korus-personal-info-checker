@@ -133,28 +133,13 @@ def _find_excel_files(download_dir: str, file_prefix: str) -> list[str]:
     if not download_dir or not os.path.isdir(download_dir):
         raise EnvironmentError(f"다운로드 디렉토리를 찾을 수 없습니다: {download_dir}")
 
-    # Debug logging
-    print_info(f"검색 중... 디렉토리: {download_dir}")
-    print_info(f"검색 중... 파일 접두사: {file_prefix}")
-
-    all_files = os.listdir(download_dir)
-    excel_files = [f for f in all_files if f.lower().endswith(cfg.EXCEL_EXTENSIONS)]
-
-    if excel_files:
-        print_info(f"발견된 Excel 파일 수: {len(excel_files)}")
-        # Show first few files for debugging
-        for f in excel_files[:3]:
-            print_info(f"  - {f}")
-    else:
-        print_info("Excel 파일을 찾을 수 없습니다.")
-
-    matched_files = [f for f in excel_files if f.startswith(file_prefix)]
-
-    if matched_files:
-        print_info(f"매칭된 파일 수: {len(matched_files)}")
-    else:
-        print_info(f"'{file_prefix}'로 시작하는 파일을 찾을 수 없습니다.")
-
+    matched_files = [
+        f
+        for f in os.listdir(download_dir)
+        if f.startswith(file_prefix) and f.lower().endswith(cfg.EXCEL_EXTENSIONS)
+    ]
+    # Log count only — raw filenames must not be logged (PIPA compliance)
+    print_info(f"파일 검색: '{file_prefix}' 접두사 파일 {len(matched_files)}개 발견")
     return matched_files
 
 
