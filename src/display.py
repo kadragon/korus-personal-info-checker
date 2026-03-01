@@ -9,7 +9,9 @@ from rich.panel import Panel
 from rich.text import Text
 
 # 전역 콘솔 객체 생성
-console = Console(markup=True)
+# legacy_windows=False to ensure proper Unicode support in PyInstaller builds
+# force_terminal=True to prevent cell_len issues in PyInstaller builds
+console = Console(markup=True, legacy_windows=False, force_terminal=True)
 
 
 def print_header(title: str) -> None:
