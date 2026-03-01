@@ -6,13 +6,13 @@
 
 ### 🔍 검사 유형
 
-- **다운로드 사유 검사**: 개인정보 다운로드 시 부적절한 사유(짧거나 단순한 텍스트) 탐지
+- **다운로드 사유 검사**: 개인정보 다운로드 시 부적절한 사유(짧거나 단순한 텍스트, 한글 자모 단독 입력, 라틴 문자 키보드 난타) 탐지
 - **로그인 기록 검사**: 비정상적인 IP 변경 패턴, 업무시간 외/휴일 로그인 탐지
 - **개인 파일 접근 검사**: 인사마스터 타인 조회, 대량 데이터 조회/저장 탐지
 
 ### 📊 분석 대상 패턴
 
-- 다운로드 사유: 고유 문자 수 5개 이하, 총 다운로드 건수 100건 초과, 1시간 내 20건 이상
+- 다운로드 사유: 고유 문자 수 5개 이하, 한글 자모 단독 사용, 라틴 문자 키보드 난타(자음 연속 5개 이상 또는 모음 비율 20% 미만), 총 다운로드 건수 100건 초과, 1시간 내 20건 이상
 - 로그인: 1시간 내 3개 이상 IP 사용, 업무시간 외(23시~7시)/휴일 접근
 - 개인 파일: 인사마스터 타인 접근, 조회 1000건 이상, 저장 100건 이상
 
@@ -33,10 +33,6 @@ cd korus-personal-info-checker
 ### 2. 의존성 설치
 
 ```bash
-# pip 사용
-pip install .
-
-# 또는 uv 사용 (권장)
 uv sync
 ```
 
@@ -60,22 +56,8 @@ SAVE_DIR=/path/to/save/reports
 ### 기본 실행
 
 ```bash
-python -m src.main
+uv run korus-checker
 ```
-
-### Windows 실행파일 빌드/실행
-
-```powershell
-# 개발 의존성 설치
-uv sync --extra dev
-
-# 실행파일 빌드
-scripts\\build_windows.ps1
-```
-
-- 결과물: `dist\\korus-checker.exe`
-- 실행: `korus-checker.exe`를 실행하면 다운로드 폴더를 선택하고,
-  선택한 폴더 아래에 `korus_YYYYMM` 폴더를 생성해 결과를 저장합니다.
 
 실행 시 이전 달(YYYYMM)의 로그를 자동으로 분석하며, 다음과 같은 출력을 표시합니다:
 
@@ -173,12 +155,10 @@ korus-personal-info-checker/
 │   │   └── personal_file_checker.py    # 개인 파일 접근 검사
 │   ├── display.py              # 터미널 출력 관리
 │   └── utils.py                # 공통 유틸리티 함수
-├── docs/
-│   └── agents/                 # 에이전트 문서화
 ├── .env.example                # 환경 변수 템플릿
 ├── pyproject.toml              # 프로젝트 설정
 ├── README.md                   # 이 파일
-└── uv.lock                    # 의존성 잠금 파일
+└── uv.lock                     # 의존성 잠금 파일
 ```
 
 ## 개발 정보
@@ -193,18 +173,15 @@ korus-personal-info-checker/
 
 ```bash
 # 개발 의존성 설치
-pip install -e .[dev]
-
-# 또는 uv 사용
 uv sync --extra dev
 
 # 단위 테스트 및 커버리지
-pytest --cov=src --cov-report=term-missing
+uv run pytest --cov=src --cov-report=term-missing
 
 # 정적 분석
-ruff check src/
-mypy src/
-bandit -r src/
+uv run ruff check src/
+uv run mypy src/
+uv run bandit -r src/
 ```
 
 ### 기여 방법
