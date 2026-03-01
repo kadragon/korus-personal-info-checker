@@ -1,6 +1,6 @@
 # KORUS Personal Info Checker - Unified AGENTS
 
-Last Updated: 2026-01-10
+Last Updated: 2026-03-01
 Framework: TDD (Test-Driven Development)
 
 ## Project Overview
@@ -14,8 +14,6 @@ Python CLI tool that analyzes KORUS Personal Information Processing System acces
 - Ambiguity = halt: stop and record the gap before proceeding.
 - Memory hygiene: keep active tracking concise and current.
 - Rollback on failure: shrink scope and log the cause.
-- Release automation: main pushes create releases using the `pyproject.toml`
-  version, so bump the version before merging to trigger a new release.
 
 ## Architecture & Data Flow
 - Pipeline: INPUT -> EXTRACT -> TRANSFORM -> DETECT -> OUTPUT.
@@ -38,11 +36,11 @@ Python CLI tool that analyzes KORUS Personal Information Processing System acces
 - Encoding: UTF-8 with BOM for Excel compatibility.
 
 ## Quality Gates (Must Pass)
-- Lint: `ruff check src`
-- Type check: `mypy src`
-- Security: `bandit -r src` (tests excluded)
-- Tests: `pytest --cov=src --cov-report=term` (line >=80%, branch >=70%)
-- Current health (2025-11-06): 99% line coverage, 80 tests passing.
+- Lint: `uv run ruff check src`
+- Type check: `uv run mypy src`
+- Security: `uv run bandit -r src` (tests excluded)
+- Tests: `uv run pytest --cov=src --cov-report=term` (line >=80%, branch >=70%)
+- Current health (2026-03-01): 99% line coverage, 107 tests passing.
 
 ## Documentation Standards
 - Docstrings: English, Google style for all public APIs.
@@ -67,12 +65,12 @@ Python CLI tool that analyzes KORUS Personal Information Processing System acces
 
 ## Tasks
 Active/Backlog:
-- None (as of 2025-11-06).
+- None.
 
 Recent Completed:
+- 2026-03-01: Remove launcher (src/launcher.py, PyInstaller, release.yml); add `uv run korus-checker` entry point via hatchling + [project.scripts]; 107 tests passing.
+- 2026-03-01: Gibberish detection for download reason checker (#75); 114 tests passing.
 - 2025-11-06: Test coverage improvement to 99%; lint/mypy/bandit clean.
-- 2025-10-12: Comprehensive tests; coverage targets achieved.
-- 2025-10-01: Data count aggregation, Rich markup fix, README rewrite.
 
 DoD Checklist (TDD): failing test (RED) -> minimal pass (GREEN) -> refactor -> trace links updated.
 
