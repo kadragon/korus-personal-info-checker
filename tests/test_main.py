@@ -215,30 +215,3 @@ class TestMain:
             assert callable(main.main)
 
 
-class TestRunWithDownloadDir:
-    def test_run_with_download_dir_uses_korus_save_dir(self, mocker):
-        download_dir = "/tmp/download"
-        korus_save_dir = "/tmp/download/korus_202311"
-
-        mocker.patch("src.main.get_prev_month_yyyymm", return_value="202311")
-        mock_make_korus = mocker.patch(
-            "src.main.make_korus_save_dir",
-            return_value=korus_save_dir,
-        )
-        mock_discover = mocker.patch(
-            "src.main.discover_and_run_checkers",
-            return_value=5,
-        )
-        mock_zip = mocker.patch("src.main.zip_files_by_prefix")
-        mocker.patch("src.main.print_header")
-        mocker.patch("src.main.print_info")
-        mocker.patch("src.main.print_zip_header")
-        mocker.patch("src.main.print_summary")
-
-        main.run_with_download_dir(download_dir)
-
-        mock_make_korus.assert_called_once_with(download_dir, "202311")
-        mock_discover.assert_called_once_with(
-            download_dir, korus_save_dir, "202311"
-        )
-        mock_zip.assert_called_once_with(korus_save_dir, main.ZIP_FILE_PREFIXES)

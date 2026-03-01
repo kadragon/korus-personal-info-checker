@@ -29,7 +29,6 @@ from .display import (
 )
 from .utils import (
     get_prev_month_yyyymm,
-    make_korus_save_dir,
     make_save_dir,
     zip_files_by_prefix,
 )
@@ -99,18 +98,6 @@ def _run_inspection(
         print_error(f"압축 작업 중 오류 발생: {e}")
 
     print_summary(reports_save_dir, total_count)
-
-
-def run_with_download_dir(download_dir: str) -> None:
-    """
-    Executes the data inspection process using the selected download directory.
-
-    The report directory is created as a `korus_YYYYMM` folder inside the
-    selected download directory.
-    """
-    prev_month_str = get_prev_month_yyyymm()
-    reports_save_dir = make_korus_save_dir(download_dir, prev_month_str)
-    _run_inspection(download_dir, reports_save_dir, prev_month_str)
 
 
 def main() -> None:

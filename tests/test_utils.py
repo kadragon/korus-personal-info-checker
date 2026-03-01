@@ -43,13 +43,6 @@ class TestMakeSaveDir:
         assert result == existing_dir
 
 
-class TestMakeKorusSaveDir:
-    def test_make_korus_save_dir_creates_dir(self, temp_dir):
-        result = utils.make_korus_save_dir(temp_dir, "202311")
-        expected = os.path.join(temp_dir, "korus_202311")
-        assert result == expected
-        assert os.path.exists(expected)
-
 
 class TestSaveExcelWithAutofit:
     def test_save_excel_with_autofit(self, temp_dir, sample_personal_access_df):
