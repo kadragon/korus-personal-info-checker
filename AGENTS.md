@@ -68,8 +68,7 @@ Active/Backlog:
 - None.
 
 Recent Completed:
-- 2026-03-01: Remove launcher (src/launcher.py, PyInstaller, release.yml); add `uv run korus-checker` entry point via hatchling + [project.scripts]; 107 tests passing.
-- 2026-03-01: Gibberish detection for download reason checker (#75); 114 tests passing.
+- 2026-03-01: Remove launcher (src/launcher.py, PyInstaller, release.yml); add `uv run korus-checker` entry point via hatchling + [project.scripts]; gibberish detection for download reason checker (#75); 107 tests passing.
 - 2025-11-06: Test coverage improvement to 99%; lint/mypy/bandit clean.
 
 DoD Checklist (TDD): failing test (RED) -> minimal pass (GREEN) -> refactor -> trace links updated.
