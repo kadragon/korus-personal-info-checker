@@ -19,6 +19,75 @@ class TestUniqueCharCountBelow5:
         assert not drc._unique_char_count_below_5(pd.NA)
 
 
+class TestHasKoreanJamo:
+    def test_detects_consonants(self):
+        assert drc._has_korean_jamo("ㄱㄴㄷ")
+
+    def test_detects_vowels(self):
+        assert drc._has_korean_jamo("ㅏㅓㅗ")
+
+    def test_detects_mixed_jamo_and_syllables(self):
+        assert drc._has_korean_jamo("ㄹㄹㅇ러ㅏ너덜딘ㅇ")
+
+    def test_normal_korean_not_flagged(self):
+        assert not drc._has_korean_jamo("연구 목적으로 필요합니다")
+
+    def test_latin_not_flagged(self):
+        assert not drc._has_korean_jamo("research project")
+
+    def test_empty_string_not_flagged(self):
+        assert not drc._has_korean_jamo("")
+
+    def test_nan_not_flagged(self):
+        assert not drc._has_korean_jamo(pd.NA)
+
+
+class TestIsLatinGibberish:
+    def test_keyboard_mashing_detected(self):
+        assert drc._is_latin_gibberish("rodsldfwifdk vjnklavjvecss")
+
+    def test_normal_english_not_flagged(self):
+        assert not drc._is_latin_gibberish("research project")
+
+    def test_short_string_skipped(self):
+        # Fewer than 8 latin chars — skip check even if consonant-heavy
+        assert not drc._is_latin_gibberish("asdfg")
+
+    def test_low_vowel_ratio_detected(self):
+        # "bcdfghjk" has 0 vowels → ratio 0.0 < 0.2
+        assert drc._is_latin_gibberish("bcdfghjkl")
+
+    def test_consonant_cluster_detected(self):
+        # 5 consecutive consonants with otherwise normal vowel ratio
+        assert drc._is_latin_gibberish("the strngth of words")
+
+    def test_nan_not_flagged(self):
+        assert not drc._is_latin_gibberish(pd.NA)
+
+
+class TestIsSuspiciousReason:
+    def test_triggers_via_unique_char_check(self):
+        assert drc._is_suspicious_reason("asdfg")
+
+    def test_triggers_via_jamo_check(self):
+        assert drc._is_suspicious_reason("ㄹㄹㅇ러ㅏ너덜딘ㅇ")
+
+    def test_triggers_via_latin_gibberish_check(self):
+        assert drc._is_suspicious_reason("rodsldfwifdk vjnklavjvecss")
+
+    def test_normal_korean_not_flagged(self):
+        assert not drc._is_suspicious_reason("연구 목적으로 필요합니다")
+
+    def test_normal_english_not_flagged(self):
+        assert not drc._is_suspicious_reason("research project")
+
+    def test_nan_not_flagged(self):
+        assert not drc._is_suspicious_reason(pd.NA)
+
+    def test_none_not_flagged(self):
+        assert not drc._is_suspicious_reason(None)
+
+
 class TestCheckDownloadSayu:
     def test_check_download_sayu_invalid_reasons(self, sample_download_df):
         df = sample_download_df.copy()
@@ -34,6 +103,32 @@ class TestCheckDownloadSayu:
 
         with pytest.raises(ValueError):
             drc._check_download_sayu(df)
+
+    def test_check_download_sayu_catches_jamo_gibberish(self, sample_download_df):
+        df = sample_download_df.copy()
+        df.loc[0, "다운로드사유"] = "ㄹㄹㅇ러ㅏ너덜딘ㅇ"  # jamo mashing
+        df.loc[1, "다운로드사유"] = "연구 목적으로 필요합니다"  # valid
+
+        result = drc._check_download_sayu(df)
+        assert len(result) == 1
+        assert result.iloc[0]["교직원ID"] == "emp1"
+
+    def test_check_download_sayu_catches_latin_gibberish(self, sample_download_df):
+        df = sample_download_df.copy()
+        df.loc[0, "다운로드사유"] = "rodsldfwifdk vjnklavjvecss"  # latin mashing
+        df.loc[1, "다운로드사유"] = "연구 목적으로 필요합니다"  # valid
+
+        result = drc._check_download_sayu(df)
+        assert len(result) == 1
+        assert result.iloc[0]["교직원ID"] == "emp1"
+
+    def test_check_download_sayu_multiple_suspicious(self, sample_download_df):
+        df = sample_download_df.copy()
+        df.loc[0, "다운로드사유"] = "ㄹㄹㅇ러ㅏ너덜딘ㅇ"  # jamo
+        df.loc[1, "다운로드사유"] = "rodsldfwifdk vjnklavjvecss"  # latin gibberish
+
+        result = drc._check_download_sayu(df)
+        assert len(result) == 2
 
 
 class TestFilterHighDownloadUsers:
