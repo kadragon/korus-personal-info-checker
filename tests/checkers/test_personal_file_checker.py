@@ -20,9 +20,9 @@ class TestFilterByJobMasterExcludeDetailId:
         # Modify sample data to have HR master access
         df = sample_personal_access_df.copy()
         df.loc[0, "프로그램명"] = "인사마스터"
-        df.loc[0, "상세내용"] = "emp1 details"  # self access, should be excluded
+        df.loc[0, "상세내용"] = "sklstfNo=emp1&foo=bar"  # self access, excluded
         df.loc[1, "프로그램명"] = "인사마스터"
-        df.loc[1, "상세내용"] = "other details"  # not self, should be included
+        df.loc[1, "상세내용"] = "sklstfNo=emp1"  # not self, included
 
         result = pfc._filter_by_job_master_exclude_detail_id(df)
         assert len(result) == 1
@@ -31,6 +31,16 @@ class TestFilterByJobMasterExcludeDetailId:
     def test_filter_no_hr_master(self, sample_personal_access_df):
         df = sample_personal_access_df.copy()
         df["프로그램명"] = "기타"
+
+        result = pfc._filter_by_job_master_exclude_detail_id(df)
+        assert result.empty
+
+    def test_filter_skips_missing_or_empty_sklstfno(self, sample_personal_access_df):
+        df = sample_personal_access_df.copy()
+        df.loc[0, "프로그램명"] = "인사마스터"
+        df.loc[0, "상세내용"] = "other details"  # no sklstfNo
+        df.loc[1, "프로그램명"] = "인사마스터"
+        df.loc[1, "상세내용"] = "sklstfNo="  # empty sklstfNo
 
         result = pfc._filter_by_job_master_exclude_detail_id(df)
         assert result.empty
@@ -95,9 +105,7 @@ class TestExtractAndSaveByJob:
         self, temp_dir, sample_personal_access_df, mocker
     ):
         """Test _extract_and_save_by_job with very long employee name (line 236)."""
-        mocker.patch(
-            "src.checkers.personal_file_checker.print_result"
-        )
+        mocker.patch("src.checkers.personal_file_checker.print_result")
 
         df = sample_personal_access_df.copy()
         # Create a very long name that will exceed SHEET_NAME_MAX_CHARS (31)
