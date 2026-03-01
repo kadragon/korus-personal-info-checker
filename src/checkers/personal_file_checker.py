@@ -12,6 +12,7 @@ have sheets created per user exceeding the threshold.
 """
 
 import os
+import re
 from datetime import datetime
 
 import pandas as pd
@@ -120,9 +121,10 @@ def run_check(download_dir: str, save_dir: str, prev_month: str) -> int:
 
 def _filter_by_job_master_exclude_detail_id(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Filters access records to the 'HR Master' (HR master) program,
-    excluding cases where the user's ID
-    appears in the 'Detail Content' field (i.e., self-access).
+    Filters access records to the 'HR Master' (HR master) program.
+    Only flags records where 'sklstfNo=' is present with a non-empty value
+    that differs from the user's ID. Records without 'sklstfNo=' (or with an
+    empty value) are not filtered.
 
     Parameters:
     df (pd.DataFrame): DataFrame containing personal information access logs.
@@ -159,18 +161,27 @@ def _filter_by_job_master_exclude_detail_id(df: pd.DataFrame) -> pd.DataFrame:
     if hr_master_df.empty:
         return hr_master_df
 
-    # 조건 2: '상세내용'에 자신의 '직원ID'가 포함되어 있지 않은 기록만 남깁니다.
-    #         (즉, 타인 조회 기록만 필터링)
-    # 각 행을 순회하며 '직원ID'와 '상세내용'을 비교해야 하므로 apply 함수를 사용합니다.
-    is_not_self_access = [
-        str(emp_id) not in str(detail)
+    # 조건 2: '상세내용'에 sklstfNo=가 존재하고 값이 비어있지 않으며,
+    #         그 값이 자신의 '직원ID'와 다른 경우만 남깁니다.
+    sklstf_pattern = re.compile(r"sklstfNo=([^&]*)")
+
+    def _is_other_access(emp_id: object, detail: object) -> bool:
+        # findall instead of search to prevent parameter-pollution bypass
+        # (e.g. sklstfNo=attacker&sklstfNo=victim would fool a single-match check)
+        sklstf_nos = sklstf_pattern.findall(str(detail))
+        if not sklstf_nos:
+            return False
+        return any(v != "" and str(emp_id) != v for v in sklstf_nos)
+
+    is_other_access = [
+        _is_other_access(emp_id, detail)
         for emp_id, detail in zip(
             hr_master_df[employee_id_col_to_use],
             hr_master_df[cfg.COL_DETAIL_CONTENT],
             strict=True,
         )
     ]
-    filtered_df = hr_master_df[is_not_self_access]
+    filtered_df = hr_master_df[is_other_access]
 
     # 결과를 정렬합니다.
     return filtered_df.sort_values([employee_id_col_to_use, cfg.COL_ACCESS_TIME])

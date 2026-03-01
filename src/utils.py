@@ -133,11 +133,14 @@ def _find_excel_files(download_dir: str, file_prefix: str) -> list[str]:
     if not download_dir or not os.path.isdir(download_dir):
         raise EnvironmentError(f"다운로드 디렉토리를 찾을 수 없습니다: {download_dir}")
 
-    return [
+    matched_files = [
         f
         for f in os.listdir(download_dir)
         if f.startswith(file_prefix) and f.lower().endswith(cfg.EXCEL_EXTENSIONS)
     ]
+    # Log count only — raw filenames must not be logged (PIPA compliance)
+    print_info(f"파일 검색: '{file_prefix}' 접두사 파일 {len(matched_files)}개 발견")
+    return matched_files
 
 
 def _merge_and_preprocess_files(

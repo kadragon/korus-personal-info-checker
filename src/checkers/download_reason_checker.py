@@ -11,6 +11,7 @@ saves the filtered results to separate Excel files.
 """
 
 import os
+import re
 from collections.abc import Callable
 from datetime import datetime
 from typing import Any, cast
@@ -24,6 +25,11 @@ from ..utils import (
     find_and_prepare_excel_file,
     run_and_save_check,
 )
+
+_JAMO_PATTERN = re.compile(r"[\u3131-\u3163]")
+_CONSONANT_CLUSTER_PATTERN = re.compile(r"[bcdfghjklmnpqrstvwxyz]{5,}", re.IGNORECASE)
+_LATIN_VOWEL_MIN_RATIO = 0.2
+_LATIN_MIN_LENGTH = 8
 
 
 def _unique_char_count_below_5(text_input: Any) -> bool:
@@ -42,6 +48,76 @@ def _unique_char_count_below_5(text_input: Any) -> bool:
     if pd.isna(text_input):
         return False
     return len(set(str(text_input))) <= 5
+
+
+def _has_korean_jamo(text_input: Any) -> bool:
+    """
+    Checks if the text contains independent Korean jamo (U+3131–U+3163).
+
+    Normal Korean text uses complete syllable blocks (가-힣). Independent jamo
+    indicate keyboard mashing or invalid input.
+
+    Parameters:
+        text_input: The string to check.
+
+    Returns:
+        bool: True if independent jamo are found, False otherwise.
+              Returns False if the input is NaN.
+    """
+    if pd.isna(text_input):
+        return False
+    return bool(_JAMO_PATTERN.search(str(text_input)))
+
+
+def _is_latin_gibberish(text_input: Any) -> bool:
+    """
+    Checks if the text is likely Latin keyboard mashing (gibberish).
+
+    Only applies when the text contains at least _LATIN_MIN_LENGTH Latin characters.
+    Detects gibberish via vowel ratio below _LATIN_VOWEL_MIN_RATIO or a consonant
+    cluster of 5 or more consecutive consonants.
+
+    Parameters:
+        text_input: The string to check.
+
+    Returns:
+        bool: True if the text appears to be Latin gibberish, False otherwise.
+              Returns False if the input is NaN or has fewer than _LATIN_MIN_LENGTH
+              Latin characters.
+    """
+    if pd.isna(text_input):
+        return False
+    text = str(text_input)
+    latin_chars = re.findall(r"[a-zA-Z]", text)
+    if len(latin_chars) < _LATIN_MIN_LENGTH:
+        return False
+    vowel_count = sum(1 for c in latin_chars if c.lower() in "aeiou")
+    vowel_ratio = vowel_count / len(latin_chars)
+    if vowel_ratio < _LATIN_VOWEL_MIN_RATIO:
+        return True
+    return bool(_CONSONANT_CLUSTER_PATTERN.search(text))
+
+
+def _is_suspicious_reason(text_input: Any) -> bool:
+    """
+    Master function combining all suspicious download reason checks.
+
+    Returns True if any of the following conditions are met:
+    - Unique character count is 5 or fewer (_unique_char_count_below_5)
+    - Contains independent Korean jamo (_has_korean_jamo)
+    - Appears to be Latin keyboard mashing (_is_latin_gibberish)
+
+    Parameters:
+        text_input: The string to check.
+
+    Returns:
+        bool: True if the download reason is suspicious, False otherwise.
+    """
+    return (
+        _unique_char_count_below_5(text_input)
+        or _has_korean_jamo(text_input)
+        or _is_latin_gibberish(text_input)
+    )
 
 
 def run_check(download_dir: str, save_dir: str, prev_month: str) -> int:
@@ -163,7 +239,7 @@ def _check_download_sayu(df: pd.DataFrame) -> pd.DataFrame:
 
     # 다운로드 사유의 고유 문자 수에 대한 필터를 적용합니다.
     # 원본 주석: "5. 고유 문자 개수 5개 이하인 row 필터링"
-    filtered_df = df[df[cfg.COL_DOWNLOAD_REASON].apply(_unique_char_count_below_5)]
+    filtered_df = df[df[cfg.COL_DOWNLOAD_REASON].apply(_is_suspicious_reason)]
     return filtered_df.sort_values([cfg.COL_EMPLOYEE_ID, cfg.COL_ACCESS_TIME])
 
 
