@@ -21,6 +21,8 @@ from .. import config as cfg
 from ..display import print_checker_header, print_result
 from ..utils import find_and_prepare_excel_file, run_and_save_check
 
+_SKLSTF_PATTERN = re.compile(r"sklstfNo=([^&]*)")
+
 
 def run_check(download_dir: str, save_dir: str, prev_month: str) -> int:
     """
@@ -163,12 +165,10 @@ def _filter_by_job_master_exclude_detail_id(df: pd.DataFrame) -> pd.DataFrame:
 
     # 조건 2: '상세내용'에 sklstfNo=가 존재하고 값이 비어있지 않으며,
     #         그 값이 자신의 '직원ID'와 다른 경우만 남깁니다.
-    sklstf_pattern = re.compile(r"sklstfNo=([^&]*)")
-
     def _is_other_access(emp_id: object, detail: object) -> bool:
         # findall instead of search to prevent parameter-pollution bypass
         # (e.g. sklstfNo=attacker&sklstfNo=victim would fool a single-match check)
-        sklstf_nos = sklstf_pattern.findall(str(detail))
+        sklstf_nos = _SKLSTF_PATTERN.findall(str(detail))
         if not sklstf_nos:
             return False
         return any(v != "" and str(emp_id) != v for v in sklstf_nos)

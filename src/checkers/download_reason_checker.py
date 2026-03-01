@@ -27,6 +27,7 @@ from ..utils import (
 )
 
 _JAMO_PATTERN = re.compile(r"[\u3131-\u3163]")
+_LATIN_CHARS_PATTERN = re.compile(r"[a-zA-Z]")
 _CONSONANT_CLUSTER_PATTERN = re.compile(r"[bcdfghjklmnpqrstvwxyz]{5,}", re.IGNORECASE)
 _LATIN_VOWEL_MIN_RATIO = 0.2
 _LATIN_MIN_LENGTH = 8
@@ -88,10 +89,10 @@ def _is_latin_gibberish(text_input: Any) -> bool:
     if pd.isna(text_input):
         return False
     text = str(text_input)
-    latin_chars = re.findall(r"[a-zA-Z]", text)
+    latin_chars = _LATIN_CHARS_PATTERN.findall(text)
     if len(latin_chars) < _LATIN_MIN_LENGTH:
         return False
-    vowel_count = sum(1 for c in latin_chars if c.lower() in "aeiou")
+    vowel_count = sum(1 for c in latin_chars if c in "aeiouAEIOU")
     vowel_ratio = vowel_count / len(latin_chars)
     if vowel_ratio < _LATIN_VOWEL_MIN_RATIO:
         return True
