@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "bandit==1.9.3",
-    "holidays==0.91",
+    "holidays==0.92",
     "openpyxl>=3.1.5",
     "pandas>=2.2.3",
     "pandas-stubs==2.3.3.260113",
