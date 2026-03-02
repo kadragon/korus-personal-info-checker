@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
@@ -146,14 +146,14 @@ wheels = [
 
 [[package]]
 name = "holidays"
-version = "0.91"
+version = "0.92"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "python-dateutil" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8c/18/56c8ca94290dba711c6bf5e539a964587fc8e5c765332687c3dd352f8483/holidays-0.91.tar.gz", hash = "sha256:beef593bb2792b3e2f7e63ab9ec5c46e93071d8c27489d14f8911b50e8f0686e", size = 835483, upload-time = "2026-02-16T21:24:07.4Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a4/9a/e397b5c64a17f198b7b9b719244b1ffb823ac685656e608b70de7a5b59da/holidays-0.92.tar.gz", hash = "sha256:5d716ececf94e0d354ccee255541f6ba702078d7ed17b693262f6446214904a5", size = 844925, upload-time = "2026-03-02T19:33:17.152Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5a/2b/deac3e0898767aed18a39906c4aa9627d97d6e86546b249ce4df9a0e53c5/holidays-0.91-py3-none-any.whl", hash = "sha256:797834bc48d8e714528575739cb981342525fa7515b24d252160763c3a2b3d7c", size = 1372624, upload-time = "2026-02-16T21:24:05.523Z" },
+    { url = "https://files.pythonhosted.org/packages/85/00/8ee09c2c671cc7e95c6212d1c15b2b67c2011468f352c21200e18c08e6c0/holidays-0.92-py3-none-any.whl", hash = "sha256:92c192a20d80cd2ddbdf3166d73a9692c59701ded34f6754115b3c849ac60857", size = 1385981, upload-time = "2026-03-02T19:33:15.627Z" },
 ]
 
 [[package]]
@@ -209,7 +209,7 @@ dev = [
 requires-dist = [
     { name = "bandit", specifier = "==1.9.3" },
     { name = "bandit", marker = "extra == 'dev'" },
-    { name = "holidays", specifier = "==0.91" },
+    { name = "holidays", specifier = "==0.92" },
     { name = "mypy", marker = "extra == 'dev'" },
     { name = "openpyxl", specifier = ">=3.1.5" },
     { name = "pandas", specifier = ">=2.2.3" },
@@ -611,11 +611,11 @@ wheels = [
 
 [[package]]
 name = "python-dotenv"
-version = "1.2.1"
+version = "1.2.2"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/f0/26/19cadc79a718c5edbec86fd4919a6b6d3f681039a2f6d66d14be94e75fb9/python_dotenv-1.2.1.tar.gz", hash = "sha256:42667e897e16ab0d66954af0e60a9caa94f0fd4ecf3aaf6d2d260eec1aa36ad6", size = 44221, upload-time = "2025-10-26T15:12:10.434Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/82/ed/0301aeeac3e5353ef3d94b6ec08bbcabd04a72018415dcb29e588514bba8/python_dotenv-1.2.2.tar.gz", hash = "sha256:2c371a91fbd7ba082c2c1dc1f8bf89ca22564a087c2c287cd9b662adde799cf3", size = 50135, upload-time = "2026-03-01T16:00:26.196Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/14/1b/a298b06749107c305e1fe0f814c6c74aea7b2f1e10989cb30f544a1b3253/python_dotenv-1.2.1-py3-none-any.whl", hash = "sha256:b81ee9561e9ca4004139c6cbba3a238c32b03e4894671e181b671e8cb8425d61", size = 21230, upload-time = "2025-10-26T15:12:09.109Z" },
+    { url = "https://files.pythonhosted.org/packages/0b/d7/1959b9648791274998a9c3526f6d0ec8fd2233e4d4acce81bbae76b44b2a/python_dotenv-1.2.2-py3-none-any.whl", hash = "sha256:1d8214789a24de455a8b8bd8ae6fe3c6b69a5e3d64aa8a8e5d68e694bbcb285a", size = 22101, upload-time = "2026-03-01T16:00:25.09Z" },
 ]
 
 [[package]]
