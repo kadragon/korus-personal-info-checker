@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 
 import pandas as pd
@@ -224,6 +225,7 @@ class TestRunCheck:
     def test_run_check_with_access_logs_enriches(
         self, temp_dir, sample_download_df, mocker
     ):
+        merged_path = os.path.join(temp_dir, "merged.xlsx")
         access_df = pd.DataFrame({
             cfg.COL_EMPLOYEE_ID: ["emp1"],
             cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 10, 2)],
@@ -234,7 +236,7 @@ class TestRunCheck:
         mocker.patch("src.checkers.download_reason_checker.print_info")
         mocker.patch(
             "src.checkers.download_reason_checker.find_and_prepare_excel_file",
-            return_value=(sample_download_df, "path"),
+            return_value=(sample_download_df, merged_path),
         )
         mocker.patch(
             "src.checkers.download_reason_checker._load_access_logs",
@@ -249,6 +251,11 @@ class TestRunCheck:
         # The df passed to run_and_save_check should have the summary column
         first_call_df = mock_save.call_args_list[0][1]["df"]
         assert cfg.COL_ACCESS_LOG_SUMMARY in first_call_df.columns
+        # The merged workbook should be re-saved with enrichment columns
+        assert os.path.exists(merged_path)
+        saved_df = pd.read_excel(merged_path)
+        assert cfg.COL_ACCESS_LOG_SUMMARY in saved_df.columns
+        assert cfg.COL_NEAREST_ACCESS_GAP in saved_df.columns
 
     def test_run_check_without_access_logs_graceful(
         self, temp_dir, sample_download_df, mocker
@@ -486,6 +493,43 @@ class TestEnrichWithAccessLogSummary:
         summary = result[cfg.COL_ACCESS_LOG_SUMMARY].iloc[0]
         assert summary == "인사조회(조회)"
 
+    def test_dtype_mismatch_float_vs_str(self):
+        download_df = pd.DataFrame({
+            cfg.COL_EMPLOYEE_ID: [12345.0],
+            cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 10, 0)],
+            cfg.COL_DOWNLOAD_REASON: ["연구"],
+            cfg.COL_DOWNLOAD_COUNT: [10],
+        })
+        access_df = pd.DataFrame({
+            cfg.COL_EMPLOYEE_ID: ["12345"],
+            cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 10, 2)],
+            cfg.COL_PROGRAM_NAME: ["인사조회"],
+            cfg.COL_JOB_PERFORMANCE: ["조회"],
+        })
+        result = drc._enrich_with_access_log_summary(
+            download_df, access_df, cfg.CROSS_REF_TIME_WINDOW_MINUTES
+        )
+        summary = result[cfg.COL_ACCESS_LOG_SUMMARY].iloc[0]
+        assert summary == "인사조회(조회)"
+
+    def test_missing_required_columns_graceful(self):
+        download_df = pd.DataFrame({
+            cfg.COL_EMPLOYEE_ID: ["emp1"],
+            cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 10, 0)],
+            cfg.COL_DOWNLOAD_REASON: ["연구"],
+            cfg.COL_DOWNLOAD_COUNT: [10],
+        })
+        access_df = pd.DataFrame({
+            cfg.COL_EMPLOYEE_ID: ["emp1"],
+            cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 10, 2)],
+        })
+        result = drc._enrich_with_access_log_summary(
+            download_df, access_df, cfg.CROSS_REF_TIME_WINDOW_MINUTES
+        )
+        assert len(result) == len(download_df)
+        assert cfg.COL_ACCESS_LOG_SUMMARY in result.columns
+        assert all(result[cfg.COL_ACCESS_LOG_SUMMARY] == "")
+
 
 class TestLoadAccessLogs:
     def test_returns_none_when_no_files(self, temp_dir, mocker):
@@ -496,3 +540,95 @@ class TestLoadAccessLogs:
         mocker.patch("src.checkers.download_reason_checker.print_info")
         result = drc._load_access_logs(temp_dir, "202309")
         assert result is None
+
+    def test_returns_none_on_environment_error(self, temp_dir, mocker):
+        mocker.patch(
+            "src.checkers.download_reason_checker._find_excel_files",
+            side_effect=EnvironmentError("bad dir"),
+        )
+        mock_info = mocker.patch(
+            "src.checkers.download_reason_checker.print_info"
+        )
+        result = drc._load_access_logs(temp_dir, "202309")
+        assert result is None
+        assert any("오류 발생" in str(c) for c in mock_info.call_args_list)
+
+    def test_returns_none_on_merge_failure(self, temp_dir, mocker):
+        mocker.patch(
+            "src.checkers.download_reason_checker._find_excel_files",
+            return_value=["file.xlsx"],
+        )
+        mocker.patch(
+            "src.checkers.download_reason_checker._merge_and_preprocess_files",
+            return_value=None,
+        )
+        mock_info = mocker.patch(
+            "src.checkers.download_reason_checker.print_info"
+        )
+        result = drc._load_access_logs(temp_dir, "202309")
+        assert result is None
+        assert any("실패" in str(c) for c in mock_info.call_args_list)
+
+    def test_happy_path_returns_deduplicated_df(self, temp_dir, mocker):
+        raw_df = pd.DataFrame({
+            cfg.COL_EMPLOYEE_ID: ["emp1", "emp1"],
+            cfg.COL_ACCESS_TIME: [
+                datetime(2023, 9, 1, 10, 0),
+                datetime(2023, 9, 1, 10, 0),
+            ],
+            cfg.COL_PROGRAM_NAME: ["인사조회", "인사조회"],
+            cfg.COL_JOB_PERFORMANCE: ["조회", "조회"],
+        })
+        mocker.patch(
+            "src.checkers.download_reason_checker._find_excel_files",
+            return_value=["file.xlsx"],
+        )
+        mocker.patch(
+            "src.checkers.download_reason_checker._merge_and_preprocess_files",
+            return_value=raw_df,
+        )
+        mocker.patch("src.checkers.download_reason_checker.print_info")
+        result = drc._load_access_logs(temp_dir, "202309")
+        assert result is not None
+        assert len(result) == 1
+
+    def test_uses_prev_month_for_prefix(self, temp_dir, mocker):
+        mock_find = mocker.patch(
+            "src.checkers.download_reason_checker._find_excel_files",
+            return_value=[],
+        )
+        mocker.patch("src.checkers.download_reason_checker.print_info")
+        drc._load_access_logs(temp_dir, "202512")
+        called_prefix = mock_find.call_args[0][1]
+        assert "202512" in called_prefix
+
+
+class TestRunCheckErrorIsolation:
+    def test_enrichment_error_does_not_crash_checks(
+        self, temp_dir, sample_download_df, mocker
+    ):
+        mocker.patch("src.checkers.download_reason_checker.print_checker_header")
+        mock_info = mocker.patch(
+            "src.checkers.download_reason_checker.print_info"
+        )
+        mocker.patch(
+            "src.checkers.download_reason_checker.find_and_prepare_excel_file",
+            return_value=(sample_download_df, None),
+        )
+        mocker.patch(
+            "src.checkers.download_reason_checker._load_access_logs",
+            return_value=pd.DataFrame({"dummy": [1]}),
+        )
+        mocker.patch(
+            "src.checkers.download_reason_checker._enrich_with_access_log_summary",
+            side_effect=KeyError("missing column"),
+        )
+        mock_run_save = mocker.patch(
+            "src.checkers.download_reason_checker.run_and_save_check"
+        )
+
+        result = drc.run_check("download_dir", temp_dir, "202309")
+
+        assert result == len(sample_download_df)
+        assert mock_run_save.call_count == 4
+        assert any("오류 발생" in str(c) for c in mock_info.call_args_list)
