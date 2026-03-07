@@ -16,11 +16,14 @@ from collections.abc import Callable
 from datetime import datetime
 from typing import Any, cast
 
+import numpy as np
 import pandas as pd
 
 from .. import config as cfg
-from ..display import print_checker_header
+from ..display import print_checker_header, print_info
 from ..utils import (
+    _find_excel_files,
+    _merge_and_preprocess_files,
     filter_by_time_conditions,
     find_and_prepare_excel_file,
     run_and_save_check,
@@ -121,6 +124,128 @@ def _is_suspicious_reason(text_input: Any) -> bool:
     )
 
 
+def _load_access_logs(download_dir: str, prev_month: str) -> pd.DataFrame | None:
+    """Load and merge access log files for the current month."""
+    file_prefix = (
+        f"{cfg.PERSONAL_INFO_ACCESS_LOG_PREFIX}{datetime.today().strftime('%Y%m')}"
+    )
+    try:
+        excel_files = _find_excel_files(download_dir, file_prefix)
+    except EnvironmentError:
+        return None
+
+    if not excel_files:
+        return None
+
+    merged_df = _merge_and_preprocess_files(excel_files, download_dir)
+    if merged_df is None:
+        return None
+
+    merged_df.drop_duplicates(inplace=True)
+    print_info(f"접속기록 로드 완료: {len(merged_df)}건 (중복 제거 후)")
+    return merged_df
+
+
+def _enrich_with_access_log_summary(
+    download_df: pd.DataFrame,
+    access_log_df: pd.DataFrame,
+    window_minutes: int,
+) -> pd.DataFrame:
+    """Enrich download records with access log summary within ±window_minutes."""
+    result = download_df.copy()
+    result[cfg.COL_ACCESS_LOG_SUMMARY] = ""
+    result[cfg.COL_NEAREST_ACCESS_GAP] = np.nan
+
+    if access_log_df.empty:
+        return result
+
+    access_log_df = access_log_df.copy()
+    access_log_df[cfg.COL_EMPLOYEE_ID] = access_log_df[cfg.COL_EMPLOYEE_ID].astype(str)
+    result[cfg.COL_EMPLOYEE_ID] = result[cfg.COL_EMPLOYEE_ID].astype(str)
+
+    window_ns = np.timedelta64(window_minutes, "m")
+
+    has_detail = cfg.COL_DETAIL_CONTENT in access_log_df.columns
+    _DETAIL_TRUNCATE_LEN = 50
+
+    # Pre-group: sorted timestamps + labels + details as numpy arrays per employee
+    grouped: dict[str, tuple[Any, Any, Any]] = {}
+    for emp_id, group in access_log_df.groupby(cfg.COL_EMPLOYEE_ID):
+        sorted_group = group.sort_values(cfg.COL_ACCESS_TIME)
+        timestamps = sorted_group[cfg.COL_ACCESS_TIME].values
+        labels = (
+            sorted_group[cfg.COL_PROGRAM_NAME].astype(str)
+            + "("
+            + sorted_group[cfg.COL_JOB_PERFORMANCE].astype(str)
+            + ")"
+        ).values
+        if has_detail:
+            details = sorted_group[cfg.COL_DETAIL_CONTENT].fillna("").astype(str).values
+        else:
+            details = np.full(len(sorted_group), "", dtype=object)
+        grouped[str(emp_id)] = (timestamps, labels, details)
+
+    summaries = result[cfg.COL_ACCESS_LOG_SUMMARY].to_numpy(copy=True)
+    gaps = result[cfg.COL_NEAREST_ACCESS_GAP].to_numpy(copy=True, dtype=float)
+
+    emp_ids = result[cfg.COL_EMPLOYEE_ID].values
+    access_times = result[cfg.COL_ACCESS_TIME].values
+
+    for i in range(len(result)):
+        emp_id = str(emp_ids[i])
+        if emp_id not in grouped:
+            continue
+
+        timestamps, labels, details = grouped[emp_id]
+        t = access_times[i]
+
+        # Compute nearest access gap (always, regardless of window match)
+        diffs = np.abs(timestamps - t)
+        min_gap_minutes = round(
+            diffs.min().astype("timedelta64[s]").astype(float) / 60, 1
+        )
+
+        lo = np.searchsorted(timestamps, t - window_ns, side="left")
+        hi = np.searchsorted(timestamps, t + window_ns, side="right")
+
+        if lo >= hi:
+            gaps[i] = min_gap_minutes
+            continue
+
+        gaps[i] = 0
+
+        matched_labels = labels[lo:hi]
+        matched_details = details[lo:hi]
+
+        # Build summary with detail snippets
+        entries: dict[str, dict[str, Any]] = {}
+        for label, detail in zip(matched_labels, matched_details, strict=True):
+            label_str = str(label)
+            if label_str not in entries:
+                entries[label_str] = {"count": 0, "detail": ""}
+            entries[label_str]["count"] += 1
+            if detail and not entries[label_str]["detail"]:
+                truncated = detail[:_DETAIL_TRUNCATE_LEN]
+                if len(detail) > _DETAIL_TRUNCATE_LEN:
+                    truncated += "..."
+                entries[label_str]["detail"] = truncated
+
+        parts = []
+        for label_str, info in entries.items():
+            part = label_str
+            if info["count"] > 1:
+                part += f" x{info['count']}"
+            if info["detail"]:
+                part += f" [{info['detail']}]"
+            parts.append(part)
+
+        summaries[i] = "; ".join(parts)
+
+    result[cfg.COL_ACCESS_LOG_SUMMARY] = summaries
+    result[cfg.COL_NEAREST_ACCESS_GAP] = gaps
+    return result
+
+
 def run_check(download_dir: str, save_dir: str, prev_month: str) -> int:
     """
     Main function to check for suspicious patterns in personal information
@@ -162,6 +287,14 @@ def run_check(download_dir: str, save_dir: str, prev_month: str) -> int:
 
     if df is None:
         return 0
+
+    access_log_df = _load_access_logs(download_dir, prev_month)
+    if access_log_df is not None:
+        df = _enrich_with_access_log_summary(
+            df, access_log_df, cfg.CROSS_REF_TIME_WINDOW_MINUTES
+        )
+    else:
+        print_info("접속기록 파일을 찾을 수 없어 교차 검증을 건너뜁니다.")
 
     checks_to_run: list[dict[str, Callable[[pd.DataFrame], pd.DataFrame] | str]] = [
         {

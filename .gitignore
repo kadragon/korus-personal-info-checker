@@ -17,3 +17,5 @@ wheels/
 
 # macOS
 .DS_Store
+
+data/
