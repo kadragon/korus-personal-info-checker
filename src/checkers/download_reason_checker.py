@@ -151,12 +151,14 @@ def _load_access_logs(download_dir: str, prev_month: str) -> pd.DataFrame | None
     return merged_df
 
 
-_REQUIRED_ACCESS_LOG_COLS = frozenset({
-    cfg.COL_EMPLOYEE_ID,
-    cfg.COL_ACCESS_TIME,
-    cfg.COL_PROGRAM_NAME,
-    cfg.COL_JOB_PERFORMANCE,
-})
+_REQUIRED_ACCESS_LOG_COLS = frozenset(
+    {
+        cfg.COL_EMPLOYEE_ID,
+        cfg.COL_ACCESS_TIME,
+        cfg.COL_PROGRAM_NAME,
+        cfg.COL_JOB_PERFORMANCE,
+    }
+)
 
 
 def _enrich_with_access_log_summary(
@@ -181,9 +183,7 @@ def _enrich_with_access_log_summary(
     access_log_df[cfg.COL_EMPLOYEE_ID] = _normalize_employee_id(
         access_log_df[cfg.COL_EMPLOYEE_ID]
     )
-    result[cfg.COL_EMPLOYEE_ID] = _normalize_employee_id(
-        result[cfg.COL_EMPLOYEE_ID]
-    )
+    result[cfg.COL_EMPLOYEE_ID] = _normalize_employee_id(result[cfg.COL_EMPLOYEE_ID])
 
     window_ns = np.timedelta64(window_minutes, "m")
 
@@ -245,7 +245,7 @@ def _enrich_with_access_log_summary(
                 entries[label_str] = {"count": 0, "detail": ""}
             entries[label_str]["count"] += 1
             if detail and not entries[label_str]["detail"]:
-                truncated = detail[:cfg.DETAIL_TRUNCATE_LEN]
+                truncated = detail[: cfg.DETAIL_TRUNCATE_LEN]
                 if len(detail) > cfg.DETAIL_TRUNCATE_LEN:
                     truncated += "..."
                 entries[label_str]["detail"] = truncated
