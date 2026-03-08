@@ -35,3 +35,15 @@
 - [x] Fast IP switch (<=5 min gap, different IPs) appends "(빠른 전환)"
 - [x] _filter_ip_switch output includes "사유추정" column
 - [x] _filter_ip_switch with no flagged records returns empty DataFrame with "사유추정" column
+
+## Login Checker - IP switch reason robustness & per-cluster estimation
+
+> Fix crashes on malformed/NaN IPs and scope reason estimation to each flagged cluster, not the whole employee.
+
+- [x] NaN IPs skipped in _estimate_ip_switch_reason (no crash)
+- [x] Malformed IPs (not 4 octets) skipped in _estimate_ip_switch_reason (no crash)
+- [x] NaN IPs excluded from unique count in _filter_ip_switch (no false positives)
+- [x] Per-cluster reason: two separate clusters for same employee get independent reasons
+- [x] Multi-employee test: two employees get different classifications
+- [x] Same-IP rapid logins do NOT trigger fast-switch suffix
+- [x] Fast switch NOT triggered when gap exceeds threshold
