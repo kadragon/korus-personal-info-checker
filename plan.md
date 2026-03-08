@@ -23,3 +23,15 @@
 - [x] `_enrich`: 접속기록에 해당 교직원 없을 때 NaN
 - [x] `_enrich`: 요약에 상세내용 포함 (앞 50자 truncate)
 - [x] `_enrich`: 상세내용 컬럼 없을 때 기존 동작 유지
+
+## Login Checker - IP switch reason estimation
+
+> Flagged IP-switch records include a "사유추정" column explaining the likely cause.
+
+- [x] _estimate_ip_switch_reason returns DataFrame with "사유추정" column for empty input
+- [x] Same /24 subnet IPs classified as "동일 네트워크 내 PC 변경"
+- [x] Same /16 but different /24 classified as "캠퍼스 내 이동 추정"
+- [x] Different /16 networks classified as "외부 네트워크 접속 포함"
+- [x] Fast IP switch (<=5 min gap, different IPs) appends "(빠른 전환)"
+- [x] _filter_ip_switch output includes "사유추정" column
+- [x] _filter_ip_switch with no flagged records returns empty DataFrame with "사유추정" column

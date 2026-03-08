@@ -124,6 +124,68 @@ def run_check(download_dir: str, save_dir: str, prev_month: str) -> int:
     return len(df)
 
 
+def _estimate_ip_switch_reason(df: pd.DataFrame) -> pd.DataFrame:
+    """Estimate the reason for IP switching patterns per user.
+
+    Classifies each user's IP switching pattern based on subnet analysis:
+    - All IPs in same /24 → same network PC change
+    - All IPs in same /16 but different /24 → campus move
+    - Different /16 → external network access
+
+    Appends a fast-switch suffix if any consecutive different-IP logins
+    occur within LOGIN_IP_FAST_SWITCH_MINUTES minutes.
+
+    Parameters:
+        df: DataFrame with COL_EMPLOYEE_ID, COL_ACCESS_TIME, COL_IP columns.
+
+    Returns:
+        DataFrame with added COL_ESTIMATED_REASON column.
+    """
+    result = df.copy()
+    result[cfg.COL_ESTIMATED_REASON] = ""
+
+    if result.empty:
+        return result
+
+    for _emp_id, group in result.groupby(cfg.COL_EMPLOYEE_ID):
+        ips = group[cfg.COL_IP].unique()
+        octets = [ip.split(".") for ip in ips]
+
+        # Classify by subnet
+        slash16_set = {(o[0], o[1]) for o in octets}
+        slash24_set = {(o[0], o[1], o[2]) for o in octets}
+
+        if len(slash16_set) > 1:
+            reason = cfg.REASON_EXTERNAL_NETWORK
+        elif len(slash24_set) > 1:
+            reason = cfg.REASON_CAMPUS_MOVE
+        else:
+            reason = cfg.REASON_SAME_SUBNET
+
+        # Check for fast IP switching
+        sorted_group = group.sort_values(cfg.COL_ACCESS_TIME)
+        has_fast_switch = False
+        for i in range(1, len(sorted_group)):
+            prev_row = sorted_group.iloc[i - 1]
+            curr_row = sorted_group.iloc[i]
+            if prev_row[cfg.COL_IP] != curr_row[cfg.COL_IP]:
+                time_diff = (
+                    curr_row[cfg.COL_ACCESS_TIME] - prev_row[cfg.COL_ACCESS_TIME]
+                )
+                if time_diff <= pd.Timedelta(
+                    minutes=cfg.LOGIN_IP_FAST_SWITCH_MINUTES
+                ):
+                    has_fast_switch = True
+                    break
+
+        if has_fast_switch:
+            reason = f"{reason}{cfg.REASON_FAST_SWITCH_SUFFIX}"
+
+        result.loc[group.index, cfg.COL_ESTIMATED_REASON] = reason
+
+    return result
+
+
 def _filter_ip_switch(df: pd.DataFrame) -> pd.DataFrame:
     """
     Filters users who logged in from multiple unique IP addresses within a
@@ -178,8 +240,9 @@ def _filter_ip_switch(df: pd.DataFrame) -> pd.DataFrame:
 
     if flagged_indices:
         result_df = df_copy.loc[sorted(flagged_indices)]
-        return result_df.sort_values([cfg.COL_EMPLOYEE_ID, cfg.COL_ACCESS_TIME])
+        result_df = result_df.sort_values([cfg.COL_EMPLOYEE_ID, cfg.COL_ACCESS_TIME])
+        return _estimate_ip_switch_reason(result_df)
     else:
-        return pd.DataFrame(
-            columns=df.columns
-        )  # 일치하는 항목이 없으면 동일한 열을 가진 빈 DataFrame을 반환합니다.
+        empty_df = pd.DataFrame(columns=df.columns)
+        empty_df[cfg.COL_ESTIMATED_REASON] = pd.Series(dtype="str")
+        return empty_df

@@ -3,6 +3,7 @@ from datetime import datetime
 import pandas as pd
 import pytest
 
+from src import config as cfg
 from src.checkers import login_checker as lc
 
 
@@ -21,6 +22,27 @@ class TestFilterIpSwitch:
         result = lc._filter_ip_switch(df)
         assert len(result) == 3  # all flagged
 
+    def test_filter_ip_switch_includes_reason_column(self, sample_login_df):
+        df = sample_login_df.copy()
+        df.loc[0, "접속일시"] = datetime(2023, 9, 1, 9, 0)
+        df.loc[0, "IP"] = "192.168.1.1"
+        df.loc[1, "접속일시"] = datetime(2023, 9, 1, 9, 30)
+        df.loc[1, "IP"] = "192.168.1.2"
+        df.loc[2, "접속일시"] = datetime(2023, 9, 1, 9, 45)
+        df.loc[2, "IP"] = "192.168.1.3"
+        df.loc[2, "교직원ID"] = "emp1"
+
+        result = lc._filter_ip_switch(df)
+        assert cfg.COL_ESTIMATED_REASON in result.columns
+        assert (result[cfg.COL_ESTIMATED_REASON] != "").all()
+
+    def test_filter_ip_switch_empty_result_has_reason_column(self, sample_login_df):
+        df = sample_login_df.copy()
+        df["IP"] = "192.168.1.1"  # All same IP → no flags
+        result = lc._filter_ip_switch(df)
+        assert result.empty
+        assert cfg.COL_ESTIMATED_REASON in result.columns
+
     def test_filter_ip_switch_no_multiple_ips(self, sample_login_df):
         df = sample_login_df.copy()
         # All same IP
@@ -32,6 +54,85 @@ class TestFilterIpSwitch:
     def test_filter_ip_switch_none_df(self):
         with pytest.raises(ValueError):
             lc._filter_ip_switch(None)
+
+
+class TestEstimateIpSwitchReason:
+    def test_empty_input_has_reason_column(self):
+        empty_df = pd.DataFrame(
+            columns=[cfg.COL_EMPLOYEE_ID, cfg.COL_ACCESS_TIME, cfg.COL_IP]
+        )
+        result = lc._estimate_ip_switch_reason(empty_df)
+        assert cfg.COL_ESTIMATED_REASON in result.columns
+        assert result.empty
+
+    def test_same_24_subnet_classified_as_pc_change(self):
+        df = pd.DataFrame(
+            {
+                cfg.COL_EMPLOYEE_ID: ["emp1", "emp1", "emp1"],
+                cfg.COL_ACCESS_TIME: [
+                    datetime(2023, 9, 1, 9, 0),
+                    datetime(2023, 9, 1, 9, 30),
+                    datetime(2023, 9, 1, 9, 45),
+                ],
+                cfg.COL_IP: ["192.168.1.10", "192.168.1.20", "192.168.1.30"],
+            }
+        )
+        result = lc._estimate_ip_switch_reason(df)
+        reasons = result[cfg.COL_ESTIMATED_REASON].unique()
+        assert len(reasons) == 1
+        assert reasons[0] == cfg.REASON_SAME_SUBNET
+
+    def test_same_16_different_24_classified_as_campus_move(self):
+        df = pd.DataFrame(
+            {
+                cfg.COL_EMPLOYEE_ID: ["emp1", "emp1", "emp1"],
+                cfg.COL_ACCESS_TIME: [
+                    datetime(2023, 9, 1, 9, 0),
+                    datetime(2023, 9, 1, 9, 30),
+                    datetime(2023, 9, 1, 9, 45),
+                ],
+                cfg.COL_IP: ["10.1.1.10", "10.1.2.20", "10.1.3.30"],
+            }
+        )
+        result = lc._estimate_ip_switch_reason(df)
+        reasons = result[cfg.COL_ESTIMATED_REASON].unique()
+        assert len(reasons) == 1
+        assert reasons[0] == cfg.REASON_CAMPUS_MOVE
+
+    def test_different_16_classified_as_external_network(self):
+        df = pd.DataFrame(
+            {
+                cfg.COL_EMPLOYEE_ID: ["emp1", "emp1", "emp1"],
+                cfg.COL_ACCESS_TIME: [
+                    datetime(2023, 9, 1, 9, 0),
+                    datetime(2023, 9, 1, 9, 30),
+                    datetime(2023, 9, 1, 9, 45),
+                ],
+                cfg.COL_IP: ["192.168.1.10", "10.0.1.20", "172.16.1.30"],
+            }
+        )
+        result = lc._estimate_ip_switch_reason(df)
+        reasons = result[cfg.COL_ESTIMATED_REASON].unique()
+        assert len(reasons) == 1
+        assert reasons[0] == cfg.REASON_EXTERNAL_NETWORK
+
+    def test_fast_switch_appends_suffix(self):
+        df = pd.DataFrame(
+            {
+                cfg.COL_EMPLOYEE_ID: ["emp1", "emp1", "emp1"],
+                cfg.COL_ACCESS_TIME: [
+                    datetime(2023, 9, 1, 9, 0),
+                    datetime(2023, 9, 1, 9, 3),
+                    datetime(2023, 9, 1, 9, 45),
+                ],
+                cfg.COL_IP: ["192.168.1.10", "192.168.1.20", "192.168.1.30"],
+            }
+        )
+        result = lc._estimate_ip_switch_reason(df)
+        reasons = result[cfg.COL_ESTIMATED_REASON].unique()
+        assert len(reasons) == 1
+        assert cfg.REASON_FAST_SWITCH_SUFFIX in reasons[0]
+        assert cfg.REASON_SAME_SUBNET in reasons[0]
 
 
 class TestRunCheck:
