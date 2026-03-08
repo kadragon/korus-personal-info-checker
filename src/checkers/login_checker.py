@@ -9,6 +9,7 @@ The main function `login_checker` coordinates these checks and saves the results
 to separate Excel files.
 """
 
+import logging
 import os
 from collections.abc import Callable
 from datetime import datetime
@@ -124,6 +125,116 @@ def run_check(download_dir: str, save_dir: str, prev_month: str) -> int:
     return len(df)
 
 
+def _split_into_clusters(
+    group: pd.DataFrame,
+) -> list[pd.DataFrame]:
+    """Split a sorted group of rows into time-based clusters.
+
+    Consecutive rows with a gap > LOGIN_IP_SWITCH_WINDOW_HOURS form
+    separate clusters.
+    """
+    sorted_group = group.sort_values(cfg.COL_ACCESS_TIME)
+    clusters: list[pd.DataFrame] = []
+    cluster_start = 0
+    for i in range(1, len(sorted_group)):
+        gap = (
+            sorted_group.iloc[i][cfg.COL_ACCESS_TIME]
+            - sorted_group.iloc[i - 1][cfg.COL_ACCESS_TIME]
+        )
+        if gap > pd.Timedelta(hours=cfg.LOGIN_IP_SWITCH_WINDOW_HOURS):
+            clusters.append(sorted_group.iloc[cluster_start:i])
+            cluster_start = i
+    clusters.append(sorted_group.iloc[cluster_start:])
+    return clusters
+
+
+logger = logging.getLogger(__name__)
+
+
+def _estimate_ip_switch_reason(df: pd.DataFrame) -> pd.DataFrame:
+    """Estimate the reason for IP switching patterns per cluster.
+
+    Splits each employee's flagged rows into time-based clusters
+    (gap > LOGIN_IP_SWITCH_WINDOW_HOURS), then classifies each cluster:
+    - All IPs in same /24 → same network PC change
+    - All IPs in same /16 but different /24 → campus move
+    - Different /16 → external network access
+
+    Appends a fast-switch suffix if any consecutive different-IP logins
+    occur within LOGIN_IP_FAST_SWITCH_MINUTES minutes.
+
+    NaN and malformed IPs (not 4 octets) are skipped during classification.
+
+    Parameters:
+        df: DataFrame with COL_EMPLOYEE_ID, COL_ACCESS_TIME, COL_IP columns.
+
+    Returns:
+        DataFrame with added COL_ESTIMATED_REASON column.
+    """
+    result = df.copy()
+    result[cfg.COL_ESTIMATED_REASON] = ""
+
+    if result.empty:
+        return result
+
+    for _emp_id, group in result.groupby(cfg.COL_EMPLOYEE_ID):
+        clusters = _split_into_clusters(group)
+
+        for cluster in clusters:
+            ips = cluster[cfg.COL_IP].dropna().unique()
+            octets = []
+            for ip in ips:
+                parts = str(ip).split(".")
+                if len(parts) != 4:
+                    logger.warning(
+                        "Skipping malformed IP '%s' for employee '%s'",
+                        ip,
+                        _emp_id,
+                    )
+                    continue
+                octets.append(parts)
+
+            if not octets:
+                result.loc[cluster.index, cfg.COL_ESTIMATED_REASON] = ""
+                continue
+
+            # Classify by subnet
+            slash16_set = {(o[0], o[1]) for o in octets}
+            slash24_set = {(o[0], o[1], o[2]) for o in octets}
+
+            if len(slash16_set) > 1:
+                reason = cfg.REASON_EXTERNAL_NETWORK
+            elif len(slash24_set) > 1:
+                reason = cfg.REASON_CAMPUS_MOVE
+            else:
+                reason = cfg.REASON_SAME_SUBNET
+
+            # Check for fast IP switching within the cluster
+            sorted_cluster = cluster.sort_values(cfg.COL_ACCESS_TIME)
+            has_fast_switch = False
+            for i in range(1, len(sorted_cluster)):
+                prev_row = sorted_cluster.iloc[i - 1]
+                curr_row = sorted_cluster.iloc[i]
+                prev_ip = prev_row[cfg.COL_IP]
+                curr_ip = curr_row[cfg.COL_IP]
+                if pd.notna(prev_ip) and pd.notna(curr_ip) and prev_ip != curr_ip:
+                    time_diff = (
+                        curr_row[cfg.COL_ACCESS_TIME] - prev_row[cfg.COL_ACCESS_TIME]
+                    )
+                    if time_diff <= pd.Timedelta(
+                        minutes=cfg.LOGIN_IP_FAST_SWITCH_MINUTES
+                    ):
+                        has_fast_switch = True
+                        break
+
+            if has_fast_switch:
+                reason = f"{reason}{cfg.REASON_FAST_SWITCH_SUFFIX}"
+
+            result.loc[cluster.index, cfg.COL_ESTIMATED_REASON] = reason
+
+    return result
+
+
 def _filter_ip_switch(df: pd.DataFrame) -> pd.DataFrame:
     """
     Filters users who logged in from multiple unique IP addresses within a
@@ -171,15 +282,19 @@ def _filter_ip_switch(df: pd.DataFrame) -> pd.DataFrame:
             ]
 
             # 이 창 내의 고유 IP 수가 임계값을 충족하는지 확인합니다.
-            if len(set(logins_in_window[cfg.COL_IP])) >= cfg.LOGIN_IP_SWITCH_MIN_IPS:
+            if (
+                len(set(logins_in_window[cfg.COL_IP].dropna()))
+                >= cfg.LOGIN_IP_SWITCH_MIN_IPS
+            ):
                 flagged_indices.update(
                     logins_in_window.index
                 )  # 이 창의 모든 기록을 추가합니다.
 
     if flagged_indices:
         result_df = df_copy.loc[sorted(flagged_indices)]
-        return result_df.sort_values([cfg.COL_EMPLOYEE_ID, cfg.COL_ACCESS_TIME])
+        result_df = result_df.sort_values([cfg.COL_EMPLOYEE_ID, cfg.COL_ACCESS_TIME])
+        return _estimate_ip_switch_reason(result_df)
     else:
-        return pd.DataFrame(
-            columns=df.columns
-        )  # 일치하는 항목이 없으면 동일한 열을 가진 빈 DataFrame을 반환합니다.
+        empty_df = pd.DataFrame(columns=df.columns)
+        empty_df[cfg.COL_ESTIMATED_REASON] = pd.Series(dtype="str")
+        return empty_df
