@@ -219,8 +219,7 @@ def _estimate_ip_switch_reason(df: pd.DataFrame) -> pd.DataFrame:
                 curr_ip = curr_row[cfg.COL_IP]
                 if pd.notna(prev_ip) and pd.notna(curr_ip) and prev_ip != curr_ip:
                     time_diff = (
-                        curr_row[cfg.COL_ACCESS_TIME]
-                        - prev_row[cfg.COL_ACCESS_TIME]
+                        curr_row[cfg.COL_ACCESS_TIME] - prev_row[cfg.COL_ACCESS_TIME]
                     )
                     if time_diff <= pd.Timedelta(
                         minutes=cfg.LOGIN_IP_FAST_SWITCH_MINUTES
