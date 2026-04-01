@@ -78,3 +78,6 @@ ZIP_FILE_PREFIXES = [
     PERSONAL_INFO_REPORT_BASE,
     DOWNLOAD_REASON_REPORT_BASE,
 ]
+
+# --- HWPX 보고서 생성 (report_generator.py) ---
+HWPX_REPORT_BASE = "[붙임1] 코러스 개인정보처리시스템 접속기록 점검 대장"
