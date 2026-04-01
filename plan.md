@@ -148,3 +148,68 @@
 - [x] 사설간이동 + 빠른전환 → 위험도 "높음"
 - [x] 고유IP수, 고유서브넷수 컬럼 정상 출력
 - [x] 빈 입력 / 빈 필터 결과에도 신규 컬럼 포함
+
+## HWPX Report Generator — 점검 대장 자동 생성
+
+> checker 실행 결과를 기반으로 HWPX 템플릿의 점검일자,
+> 로그건수를 채우고, 체크박스(정상/비정상, 유/무)를
+> 동적으로 설정하여 최종 점검 대장을 생성한다.
+
+### Phase 1: 결과 수집 — `collect_check_results`
+
+- [x] save_dir에 출력 파일이 없으면 모든 항목 False
+- [x] login_checker 업무시간외 파일이 있고 데이터 행이
+      있으면 `off_hours=True`
+- [x] login_checker 휴일 파일이 있고 데이터 행이
+      있으면 `holiday=True`
+- [x] login_checker 60분IP 파일이 있고 데이터 행이
+      있으면 `ip_switch=True`
+- [x] personal_file 1000건이상조회 파일 →
+      `high_volume_views=True`
+- [x] personal_file 100건이상저장 파일 →
+      `high_volume_saves=True`
+- [x] download_reason 100건초과 파일 →
+      `high_download_count=True`
+- [x] download_reason 1시간20건초과 파일 →
+      `high_download_freq=True`
+- [x] download_reason 업무시간외 파일 →
+      `download_off_hours=True`
+- [x] download_reason 사유이상 파일 →
+      `invalid_reason=True`
+
+### Phase 2: HWPX 텍스트 치환 — `generate_hwpx_report`
+
+- [x] 점검일자 텍스트 치환 (reference_date 기반)
+- [x] 로그건수 텍스트 치환 (총 로그 건수)
+- [x] 제목 월 텍스트 치환 (대상 월)
+
+### Phase 3: 체크박스 동적 설정
+
+- [x] 접속일시 항목: off_hours=True → 출근전/퇴근후/새벽
+      모두 "□정상 / ☑ 비정상"으로 전환
+- [x] 접속일시 항목: holiday=True → 휴무일
+      "□정상 / ☑ 비정상"
+- [x] 접속지 정보: ip_switch=True → 비인가 IP
+      "□정상 / ☑ 비정상"
+- [x] 처리한 정보주체: high_volume_views=True →
+      조회 100건 "□정상 / ☑ 비정상"
+- [x] 처리한 정보주체: high_download_count=True →
+      다운로드 10건 "□정상 / ☑ 비정상"
+- [x] 수행업무: high_volume_views → 조회 1천건
+      "□정상 / ☑ 비정상"
+- [x] 수행업무: high_volume_saves → 정정 100건
+      "□정상 / ☑ 비정상"
+- [x] 수행업무: high_download_count → 다운로드 100건
+      "□정상 / ☑ 비정상"
+- [x] 기타: ip_switch=True → 3개 이상 IP
+      "□정상 / ☑ 비정상"
+- [x] 점검표: high_download_count → ☑ 유 / □ 무
+- [x] 점검표: high_download_freq → ☑ 유 / □ 무
+- [x] 점검표: download_off_hours → ☑ 유 / □ 무
+- [x] 점검표: invalid_reason → ☑ 유 / □ 무
+- [x] 결과가 False인 항목은 기본값 유지 (정상/무)
+
+### Phase 4: main.py 통합
+
+- [x] main.py에서 checkers 실행 후 HWPX 생성 호출
+- [x] 생성된 HWPX를 save_dir에 저장
