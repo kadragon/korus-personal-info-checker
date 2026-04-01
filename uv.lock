@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
@@ -179,15 +179,12 @@ name = "korus-personal-info-checker"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "bandit" },
     { name = "holidays" },
     { name = "openpyxl" },
     { name = "pandas" },
-    { name = "pandas-stubs" },
     { name = "python-dateutil" },
     { name = "python-dotenv" },
     { name = "rich" },
-    { name = "ruff" },
     { name = "xlrd" },
 ]
 
@@ -207,14 +204,12 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "bandit", specifier = "==1.9.3" },
-    { name = "bandit", marker = "extra == 'dev'" },
+    { name = "bandit", marker = "extra == 'dev'", specifier = "==1.9.3" },
     { name = "holidays", specifier = "==0.93" },
     { name = "mypy", marker = "extra == 'dev'" },
     { name = "openpyxl", specifier = ">=3.1.5" },
     { name = "pandas", specifier = ">=2.2.3" },
-    { name = "pandas-stubs", specifier = "==2.3.3.260113" },
-    { name = "pandas-stubs", marker = "extra == 'dev'" },
+    { name = "pandas-stubs", marker = "extra == 'dev'", specifier = "==2.3.3.260113" },
     { name = "pre-commit", marker = "extra == 'dev'" },
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "pytest-cov", marker = "extra == 'dev'" },
@@ -222,8 +217,7 @@ requires-dist = [
     { name = "python-dateutil", specifier = ">=2.9.0.post0" },
     { name = "python-dotenv", specifier = ">=1.1.0" },
     { name = "rich", specifier = ">=13.0.0" },
-    { name = "ruff", specifier = "==0.14.13" },
-    { name = "ruff", marker = "extra == 'dev'" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = "==0.14.13" },
     { name = "types-openpyxl", marker = "extra == 'dev'" },
     { name = "types-python-dateutil", marker = "extra == 'dev'" },
     { name = "xlrd", specifier = ">=2.0.1" },

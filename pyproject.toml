@@ -1,19 +1,16 @@
 [project]
 name = "korus-personal-info-checker"
 version = "0.1.0"
-description = "Add your description here"
+description = "KORUS 개인정보처리시스템 접속기록 점검 도구"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "bandit==1.9.3",
     "holidays==0.93",
     "openpyxl>=3.1.5",
     "pandas>=2.2.3",
-    "pandas-stubs==2.3.3.260113",
     "python-dateutil>=2.9.0.post0",
     "python-dotenv>=1.1.0",
     "rich>=13.0.0",
-    "ruff==0.14.13",
     "xlrd>=2.0.1",
 ]
 
@@ -21,7 +18,7 @@ dependencies = [
 korus-checker = "src.main:main"
 
 [project.optional-dependencies]
-dev = ["ruff", "mypy", "bandit", "pandas-stubs", "types-openpyxl", "types-python-dateutil", "pre-commit", "pytest", "pytest-cov", "pytest-mock"]
+dev = ["ruff==0.14.13", "mypy", "bandit==1.9.3", "pandas-stubs==2.3.3.260113", "types-openpyxl", "types-python-dateutil", "pre-commit", "pytest", "pytest-cov", "pytest-mock"]
 
 [build-system]
 requires = ["hatchling"]
@@ -54,6 +51,10 @@ module = [
     "dotenv"
 ]
 ignore_missing_imports = true
+
+[tool.bandit]
+exclude_dirs = ["tests", ".venv"]
+targets = ["src"]
 
 [tool.coverage.run]
 source = ["src"]
