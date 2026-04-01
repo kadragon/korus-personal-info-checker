@@ -38,7 +38,7 @@ Python CLI tool that analyzes KORUS Personal Information Processing System acces
 ## Quality Gates (Must Pass)
 - Lint: `uv run ruff check src`
 - Type check: `uv run mypy src`
-- Security: `uv run bandit -r src` (tests excluded)
+- Security: `uv run bandit -c pyproject.toml -r src` (tests excluded)
 - Tests: `uv run pytest --cov=src --cov-report=term` (line >=80%, branch >=70%)
 - Current health (2026-03-01): 99% line coverage, 107 tests passing.
 
