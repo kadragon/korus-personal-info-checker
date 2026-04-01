@@ -22,7 +22,7 @@ _MU = "□ 유 / ☑ 무"
 
 # Template default values (must match the template's section0.xml)
 _TEMPLATE_DATE = "2026. 4. 1."
-_TEMPLATE_LOG_COUNT = "181,273"
+_TEMPLATE_LOG_COUNT = "123,456"
 _TEMPLATE_MONTH_LABEL = "(2026년 3월) "
 
 # Regex that matches either form of each checkbox type
