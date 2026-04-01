@@ -6,6 +6,7 @@ and preparing specific Excel files to process.
 """
 
 import os
+import unicodedata
 import zipfile
 from collections.abc import Callable
 from datetime import datetime
@@ -14,7 +15,9 @@ import holidays
 import openpyxl
 import pandas as pd
 from dateutil.relativedelta import relativedelta
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.worksheet import Worksheet
 
 from . import config as cfg
 from .display import (
@@ -24,6 +27,93 @@ from .display import (
     print_zip_result,
     print_zip_warning,
 )
+
+# --- KORUS Excel style constants ---
+_THIN_SIDE = Side(style="thin", color="E5E5E5")
+_HEADER_FILL = PatternFill(start_color="F4F4F4", end_color="F4F4F4", fill_type="solid")
+_HEADER_FONT = Font(name="Pretendard", size=12, color="333333")
+_DATA_FONT = Font(name="Pretendard", size=11, color="333333")
+_CENTER_ALIGN = Alignment(horizontal="center", vertical="center", wrap_text=True)
+_LEFT_ALIGN = Alignment(horizontal="left", vertical="center", wrap_text=True)
+_HEADER_ROW_HEIGHT = 30
+_DATA_ROW_HEIGHT = 27
+_LEFT_ALIGN_WIDTH_THRESHOLD = 20
+_MAX_COLUMN_WIDTH = 55  # ~400px
+
+
+def _display_width(text: str) -> int:
+    """Calculate approximate display width accounting for wide (CJK) characters."""
+    width = 0
+    for ch in text:
+        if unicodedata.east_asian_width(ch) in ("W", "F"):
+            width += 2
+        else:
+            width += 1
+    return width
+
+
+def _apply_korus_style(ws: Worksheet) -> None:
+    """Apply KORUS-style formatting to a worksheet.
+
+    Applies consistent styling matching the KORUS system export format:
+    header band with light grey fill, Pretendard font, subtle borders,
+    and auto-fit column widths with CJK-aware width calculation.
+    """
+    max_col = ws.max_column
+    max_row = ws.max_row
+
+    if not max_col or not max_row or max_row < 1:
+        return
+
+    thin = _THIN_SIDE
+
+    # First pass: calculate column widths and determine alignment per column
+    col_max_data_widths: list[int] = []
+    for col_idx in range(1, max_col + 1):
+        max_width = 0
+        max_data_width = 0
+        col_letter = get_column_letter(col_idx)
+
+        for row_idx in range(1, max_row + 1):
+            cell = ws.cell(row=row_idx, column=col_idx)
+            if cell.value is not None:
+                w = _display_width(str(cell.value))
+                max_width = max(max_width, w)
+                if row_idx > 1:
+                    max_data_width = max(max_data_width, w)
+
+        adjusted = max_width + 2 if max_width > 0 else 10
+        ws.column_dimensions[col_letter].width = min(adjusted, _MAX_COLUMN_WIDTH)
+        col_max_data_widths.append(max_data_width)
+
+    col_alignments = [
+        _LEFT_ALIGN if w > _LEFT_ALIGN_WIDTH_THRESHOLD else _CENTER_ALIGN
+        for w in col_max_data_widths
+    ]
+
+    # Header row (row 1)
+    ws.row_dimensions[1].height = _HEADER_ROW_HEIGHT
+    for col_idx in range(1, max_col + 1):
+        cell = ws.cell(row=1, column=col_idx)
+        cell.font = _HEADER_FONT
+        cell.fill = _HEADER_FILL
+        cell.alignment = _CENTER_ALIGN
+        if col_idx == 1:
+            cell.border = Border(top=thin, bottom=thin, left=thin, right=thin)
+        else:
+            cell.border = Border(top=thin, bottom=thin, right=thin)
+
+    # Data rows (row 2+)
+    for row_idx in range(2, max_row + 1):
+        ws.row_dimensions[row_idx].height = _DATA_ROW_HEIGHT
+        for col_idx in range(1, max_col + 1):
+            cell = ws.cell(row=row_idx, column=col_idx)
+            cell.font = _DATA_FONT
+            cell.alignment = col_alignments[col_idx - 1]
+            if col_idx == 1:
+                cell.border = Border(bottom=thin, left=thin, right=thin)
+            else:
+                cell.border = Border(bottom=thin, right=thin)
 
 
 def get_prev_month_yyyymm() -> str:
@@ -77,7 +167,10 @@ def make_save_dir(base_save_dir: str) -> str:
 
 def save_excel_with_autofit(df: pd.DataFrame, path: str) -> None:
     """
-    Saves a Pandas DataFrame to an Excel file and auto-fits the column widths.
+    Saves a Pandas DataFrame to an Excel file with KORUS-style formatting.
+
+    Applies Pretendard font, light grey header band, subtle borders,
+    auto-fit column widths, and appropriate row heights.
 
     Parameters:
         df (pd.DataFrame): The DataFrame to save.
@@ -90,24 +183,23 @@ def save_excel_with_autofit(df: pd.DataFrame, path: str) -> None:
 
     if ws is None:
         wb.close()
-        print_error("활성 워크시트를 찾을 수 없어 열 너비를 자동 맞춤할 수 없습니다.")
+        print_error("활성 워크시트를 찾을 수 없어 서식을 적용할 수 없습니다.")
         return
 
-    for idx, column_cells in enumerate(ws.columns):
-        max_length = 0
-        column_letter = get_column_letter(idx + 1)
+    _apply_korus_style(ws)
+    wb.save(path)
+    wb.close()
 
-        for cell in column_cells:
-            try:
-                if cell.value is not None:
-                    cell_value_str = str(cell.value)
-                    max_length = max(max_length, len(cell_value_str))
-            except Exception as e:
-                print_error(f"[열 너비 자동 맞춤] {cell.coordinate}에서 예외 발생: {e}")
 
-        adjusted_width = max_length + 2 if max_length > 0 else 10
-        ws.column_dimensions[column_letter].width = adjusted_width
+def style_excel_file(path: str) -> None:
+    """Apply KORUS-style formatting to all sheets in an existing Excel file.
 
+    Parameters:
+        path (str): The full path to the Excel file to style.
+    """
+    wb = openpyxl.load_workbook(path)
+    for ws in wb.worksheets:
+        _apply_korus_style(ws)
     wb.save(path)
     wb.close()
 
@@ -223,7 +315,7 @@ def find_and_prepare_excel_file(
         save_dir, f"{output_file_basename}_{prev_month}.xlsx"
     )
     try:
-        merged_df.to_excel(destination_save_path, index=False)
+        save_excel_with_autofit(merged_df, destination_save_path)
         save_msg = (
             f"모든 파일을 합쳐 '{os.path.basename(destination_save_path)}'"
             f"(으)로 저장했습니다."

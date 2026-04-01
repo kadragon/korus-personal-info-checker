@@ -19,7 +19,7 @@ import pandas as pd
 
 from .. import config as cfg
 from ..display import print_checker_header, print_result
-from ..utils import find_and_prepare_excel_file, run_and_save_check
+from ..utils import find_and_prepare_excel_file, run_and_save_check, style_excel_file
 
 _SKLSTF_PATTERN = re.compile(r"sklstfNo=([^&]*)")
 
@@ -247,6 +247,8 @@ def _extract_and_save_by_job(
                 sheet_name = sheet_name[: cfg.SHEET_NAME_MAX_CHARS]
 
             user_all_records_df.to_excel(writer, sheet_name=sheet_name, index=False)
+
+    style_excel_file(save_path)
 
     print_result(
         is_detected=True,

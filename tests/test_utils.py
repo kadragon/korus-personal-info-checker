@@ -8,6 +8,7 @@ Trace: SPEC-test-coverage-improvement-1, TEST-utils-1
 import os
 from datetime import datetime
 
+import openpyxl
 import pandas as pd
 import pytest
 
@@ -43,7 +44,6 @@ class TestMakeSaveDir:
         assert result == existing_dir
 
 
-
 class TestSaveExcelWithAutofit:
     def test_save_excel_with_autofit(self, temp_dir, sample_personal_access_df):
         path = os.path.join(temp_dir, "test.xlsx")
@@ -71,47 +71,34 @@ class TestSaveExcelWithAutofit:
 
         mock_wb.close.assert_called_once()
 
-    def test_save_excel_with_autofit_cell_exception(
-        self, temp_dir, mocker, capsys
-    ):
-        """Test save_excel_with_autofit cell exception (lines 95-96)."""
-        df = pd.DataFrame({"A": [1, 2, 3]})
+    def test_save_excel_with_autofit_applies_korus_style(self, temp_dir):
+        """Test that save_excel_with_autofit applies KORUS-style formatting."""
+        df = pd.DataFrame({"A": [1, 2, 3], "B": ["x", "y", "z"]})
         path = os.path.join(temp_dir, "test.xlsx")
 
-        # Create Excel file first
-        df.to_excel(path, index=False)
-
-        # Mock openpyxl to create a problematic cell
-        mock_wb = mocker.MagicMock()
-        mock_ws = mocker.MagicMock()
-        mock_wb.active = mock_ws
-
-        # Create a mock cell that will raise exception when value is accessed
-        mock_cell = mocker.MagicMock()
-        mock_cell.coordinate = "A1"
-
-        # Create a property mock that raises exception
-        error_value = mocker.PropertyMock(side_effect=Exception("Cell error"))
-        type(mock_cell).value = error_value
-
-        # Make columns return a list with our problematic cell
-        mock_ws.columns = [[mock_cell]]
-
-        # Mock column_dimensions with a dict-like object
-        mock_column_dim = mocker.MagicMock()
-        mock_ws.column_dimensions = {"A": mock_column_dim}
-
-        mocker.patch("openpyxl.load_workbook", return_value=mock_wb)
-        mocker.patch("openpyxl.utils.get_column_letter", return_value="A")
-
-        # Call the function - it should handle the exception gracefully
         utils.save_excel_with_autofit(df, path)
 
-        # Check that error was printed
-        capsys.readouterr()
-        # The function should continue despite the error and call save/close
-        mock_wb.save.assert_called_once()
-        mock_wb.close.assert_called_once()
+        wb = openpyxl.load_workbook(path)
+        ws = wb.active
+
+        # Header formatting
+        header_cell = ws.cell(row=1, column=1)
+        assert header_cell.font.name == "Pretendard"
+        assert header_cell.font.size == 12
+        assert header_cell.fill.start_color.rgb == "00F4F4F4"
+        assert header_cell.alignment.horizontal == "center"
+        assert header_cell.alignment.wrap_text is True
+
+        # Data formatting
+        data_cell = ws.cell(row=2, column=1)
+        assert data_cell.font.name == "Pretendard"
+        assert data_cell.font.size == 11
+
+        # Row heights
+        assert ws.row_dimensions[1].height == 30
+        assert ws.row_dimensions[2].height == 27
+
+        wb.close()
 
 
 class TestFindExcelFiles:
@@ -204,11 +191,13 @@ class TestMergeAndPreprocessFiles:
 
     def test_merge_and_preprocess_files_both_id_columns(self, temp_dir, capsys):
         """Test warning when both '교번' and '신분번호' exist (lines 162-166)."""
-        df = pd.DataFrame({
-            "접속일시": ["2023-09-01 10:00:00"],
-            "교번": ["12345"],
-            "신분번호": ["67890"]
-        })
+        df = pd.DataFrame(
+            {
+                "접속일시": ["2023-09-01 10:00:00"],
+                "교번": ["12345"],
+                "신분번호": ["67890"],
+            }
+        )
         file_path = os.path.join(temp_dir, "test.xlsx")
         df.to_excel(file_path, index=False)
 
@@ -222,10 +211,7 @@ class TestMergeAndPreprocessFiles:
 
     def test_merge_and_preprocess_files_sinbun_only(self, temp_dir):
         """Test renaming '신분번호' to '교직원ID' (lines 169-170)."""
-        df = pd.DataFrame({
-            "접속일시": ["2023-09-01 10:00:00"],
-            "신분번호": ["67890"]
-        })
+        df = pd.DataFrame({"접속일시": ["2023-09-01 10:00:00"], "신분번호": ["67890"]})
         file_path = os.path.join(temp_dir, "test.xlsx")
         df.to_excel(file_path, index=False)
 
