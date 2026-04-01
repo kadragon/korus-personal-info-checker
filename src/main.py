@@ -14,6 +14,7 @@ This script is designed to be executed as the application's primary entry point.
 import importlib
 import os
 import pkgutil
+from datetime import datetime
 from types import ModuleType
 
 from dotenv import load_dotenv
@@ -116,8 +117,6 @@ def _run_inspection(
         year = int(prev_month_str[:4])
         month = int(prev_month_str[4:])
         target_month_label = f"({year}년 {month}월) "
-        from datetime import datetime
-
         today = datetime.today()
         inspection_date = f"{today.year}. {today.month}. {today.day}."
 

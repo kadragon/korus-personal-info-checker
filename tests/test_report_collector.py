@@ -12,8 +12,12 @@ from src.report_generator import CheckResults, collect_check_results
 PREV_MONTH = "202603"
 
 
-def _make_filename(base: str, suffix: str, prev_month: str) -> str:
+def _make_filename(
+    base: str, suffix: str, prev_month: str, *, personal: bool = False
+) -> str:
     """Build the expected output filename."""
+    if personal:
+        return f"{base}_{prev_month}({suffix}).xlsx"
     return f"{base}({suffix})_{prev_month}.xlsx"
 
 
@@ -79,6 +83,7 @@ class TestCollectCheckResults:
             cfg.PERSONAL_INFO_REPORT_BASE,
             cfg.PERSONAL_INFO_ACCESS_HIGH_VOLUME_VIEWS_SUFFIX,
             PREV_MONTH,
+            personal=True,
         )
         _create_xlsx_with_data(tmp_path / fname)
         result = collect_check_results(str(tmp_path), PREV_MONTH)
@@ -89,6 +94,7 @@ class TestCollectCheckResults:
             cfg.PERSONAL_INFO_REPORT_BASE,
             cfg.PERSONAL_INFO_ACCESS_HIGH_VOLUME_SAVES_SUFFIX,
             PREV_MONTH,
+            personal=True,
         )
         _create_xlsx_with_data(tmp_path / fname)
         result = collect_check_results(str(tmp_path), PREV_MONTH)

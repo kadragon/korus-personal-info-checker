@@ -20,6 +20,11 @@ _ABNORMAL = "□정상 / ☑ 비정상"
 _YU = "☑ 유 / □ 무"
 _MU = "□ 유 / ☑ 무"
 
+# Template default values (must match the template's section0.xml)
+_TEMPLATE_DATE = "2026. 4. 1."
+_TEMPLATE_LOG_COUNT = "181,273"
+_TEMPLATE_MONTH_LABEL = "(2026년 3월) "
+
 # Regex that matches either form of each checkbox type
 _RE_NORMAL_ABNORMAL = re.compile(r"[☑□]정상 / [☑□] 비정상")
 _RE_YU_MU = re.compile(r"[☑□] 유 / [☑□] 무")
@@ -108,9 +113,9 @@ def generate_hwpx_report(
         other_files = {name: zin.read(name) for name in all_names if name != section}
 
     # Step 3: Text replacements
-    xml = xml.replace("2026. 4. 1.", inspection_date)
-    xml = xml.replace("181,273", f"{log_count:,}")
-    xml = xml.replace("(2026년 3월) ", target_month_label)
+    xml = xml.replace(_TEMPLATE_DATE, inspection_date)
+    xml = xml.replace(_TEMPLATE_LOG_COUNT, f"{log_count:,}")
+    xml = xml.replace(_TEMPLATE_MONTH_LABEL, target_month_label)
 
     # Step 4: Checkbox replacements - 정상/비정상
     xml = _replace_checkboxes(
