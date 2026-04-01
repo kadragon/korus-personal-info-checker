@@ -1,14 +1,10 @@
+import tomllib
 from pathlib import Path
-
-try:
-    import tomllib
-except ImportError:
-    import tomli as tomllib  # type: ignore[no-redef]
 
 
 def test_bandit_config_excludes_tests_and_targets_src() -> None:
-    pyproject = Path("pyproject.toml")
-    config = tomllib.loads(pyproject.read_text())
+    with Path("pyproject.toml").open("rb") as f:
+        config = tomllib.load(f)
 
     bandit = config["tool"]["bandit"]
     assert "src" in bandit["targets"]
