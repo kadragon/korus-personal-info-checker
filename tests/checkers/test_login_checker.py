@@ -99,7 +99,7 @@ class TestEstimateIpSwitchReason:
         assert len(reasons) == 1
         assert reasons[0] == cfg.REASON_CAMPUS_MOVE
 
-    def test_different_16_classified_as_external_network(self):
+    def test_all_private_different_16_classified_as_private_cross_subnet(self):
         df = pd.DataFrame(
             {
                 cfg.COL_EMPLOYEE_ID: ["emp1", "emp1", "emp1"],
@@ -114,7 +114,41 @@ class TestEstimateIpSwitchReason:
         result = lc._estimate_ip_switch_reason(df)
         reasons = result[cfg.COL_ESTIMATED_REASON].unique()
         assert len(reasons) == 1
-        assert reasons[0] == cfg.REASON_EXTERNAL_NETWORK
+        assert reasons[0] == cfg.REASON_PRIVATE_CROSS_SUBNET
+
+    def test_private_public_mix_classified_correctly(self):
+        df = pd.DataFrame(
+            {
+                cfg.COL_EMPLOYEE_ID: ["emp1", "emp1", "emp1"],
+                cfg.COL_ACCESS_TIME: [
+                    datetime(2023, 9, 1, 9, 0),
+                    datetime(2023, 9, 1, 9, 30),
+                    datetime(2023, 9, 1, 9, 45),
+                ],
+                cfg.COL_IP: ["10.0.1.10", "8.8.8.8", "192.168.1.30"],
+            }
+        )
+        result = lc._estimate_ip_switch_reason(df)
+        reasons = result[cfg.COL_ESTIMATED_REASON].unique()
+        assert len(reasons) == 1
+        assert reasons[0] == cfg.REASON_PRIVATE_PUBLIC_MIX
+
+    def test_all_public_classified_as_public_cross_network(self):
+        df = pd.DataFrame(
+            {
+                cfg.COL_EMPLOYEE_ID: ["emp1", "emp1", "emp1"],
+                cfg.COL_ACCESS_TIME: [
+                    datetime(2023, 9, 1, 9, 0),
+                    datetime(2023, 9, 1, 9, 30),
+                    datetime(2023, 9, 1, 9, 45),
+                ],
+                cfg.COL_IP: ["8.8.8.8", "1.1.1.1", "203.0.113.5"],
+            }
+        )
+        result = lc._estimate_ip_switch_reason(df)
+        reasons = result[cfg.COL_ESTIMATED_REASON].unique()
+        assert len(reasons) == 1
+        assert reasons[0] == cfg.REASON_PUBLIC_CROSS_NETWORK
 
     def test_fast_switch_appends_suffix(self):
         df = pd.DataFrame(
@@ -197,7 +231,7 @@ class TestEstimateIpSwitchReason:
         assert cluster1[cfg.COL_ESTIMATED_REASON].unique()[0] == cfg.REASON_SAME_SUBNET
         assert (
             cluster2[cfg.COL_ESTIMATED_REASON].unique()[0]
-            == cfg.REASON_EXTERNAL_NETWORK
+            == cfg.REASON_PRIVATE_CROSS_SUBNET
         )
 
     def test_multi_employee_different_classifications(self):
@@ -227,7 +261,10 @@ class TestEstimateIpSwitchReason:
         emp1 = result[result[cfg.COL_EMPLOYEE_ID] == "emp1"]
         emp2 = result[result[cfg.COL_EMPLOYEE_ID] == "emp2"]
         assert emp1[cfg.COL_ESTIMATED_REASON].unique()[0] == cfg.REASON_SAME_SUBNET
-        assert emp2[cfg.COL_ESTIMATED_REASON].unique()[0] == cfg.REASON_EXTERNAL_NETWORK
+        assert (
+            emp2[cfg.COL_ESTIMATED_REASON].unique()[0]
+            == cfg.REASON_PRIVATE_CROSS_SUBNET
+        )
 
     def test_same_ip_rapid_logins_no_fast_switch(self):
         """Same IP within 5 min should NOT trigger fast-switch suffix."""
@@ -262,6 +299,147 @@ class TestEstimateIpSwitchReason:
         result = lc._estimate_ip_switch_reason(df)
         reason = result[cfg.COL_ESTIMATED_REASON].unique()[0]
         assert cfg.REASON_FAST_SWITCH_SUFFIX not in reason
+
+
+class TestIsPrivateIp:
+    def test_10_range_is_private(self):
+        assert lc._is_private_ip("10.0.0.1") is True
+        assert lc._is_private_ip("10.255.255.255") is True
+
+    def test_172_range_is_private_with_boundaries(self):
+        assert lc._is_private_ip("172.16.0.1") is True
+        assert lc._is_private_ip("172.31.255.255") is True
+        # Boundaries: 172.15 and 172.32 are NOT private
+        assert lc._is_private_ip("172.15.0.1") is False
+        assert lc._is_private_ip("172.32.0.1") is False
+
+    def test_192_168_range_is_private(self):
+        assert lc._is_private_ip("192.168.0.1") is True
+        assert lc._is_private_ip("192.168.255.255") is True
+        assert lc._is_private_ip("192.169.0.1") is False
+
+    def test_public_ip_returns_false(self):
+        assert lc._is_private_ip("8.8.8.8") is False
+        assert lc._is_private_ip("203.0.113.1") is False
+        assert lc._is_private_ip("1.1.1.1") is False
+
+    def test_malformed_input_returns_false(self):
+        assert lc._is_private_ip("malformed") is False
+        assert lc._is_private_ip("") is False
+        assert lc._is_private_ip("10.1") is False
+
+
+class TestCalculateRiskLevel:
+    def test_same_subnet_low_and_fast_switch_medium(self):
+        assert lc._calculate_risk_level(cfg.REASON_SAME_SUBNET, False) == cfg.RISK_LOW
+        assert lc._calculate_risk_level(cfg.REASON_SAME_SUBNET, True) == cfg.RISK_MEDIUM
+
+    def test_campus_move_and_private_cross_are_medium(self):
+        assert (
+            lc._calculate_risk_level(cfg.REASON_CAMPUS_MOVE, False) == cfg.RISK_MEDIUM
+        )
+        assert (
+            lc._calculate_risk_level(cfg.REASON_PRIVATE_CROSS_SUBNET, False)
+            == cfg.RISK_MEDIUM
+        )
+
+    def test_private_cross_fast_switch_is_high(self):
+        assert (
+            lc._calculate_risk_level(cfg.REASON_PRIVATE_CROSS_SUBNET, True)
+            == cfg.RISK_HIGH
+        )
+
+    def test_mixed_and_public_cross_are_high(self):
+        assert (
+            lc._calculate_risk_level(cfg.REASON_PRIVATE_PUBLIC_MIX, False)
+            == cfg.RISK_HIGH
+        )
+        assert (
+            lc._calculate_risk_level(cfg.REASON_PUBLIC_CROSS_NETWORK, False)
+            == cfg.RISK_HIGH
+        )
+
+
+class TestRiskAndAnalysisColumns:
+    def test_same_24_has_risk_low(self):
+        df = pd.DataFrame(
+            {
+                cfg.COL_EMPLOYEE_ID: ["emp1", "emp1", "emp1"],
+                cfg.COL_ACCESS_TIME: [
+                    datetime(2023, 9, 1, 9, 0),
+                    datetime(2023, 9, 1, 9, 30),
+                    datetime(2023, 9, 1, 9, 45),
+                ],
+                cfg.COL_IP: ["192.168.1.10", "192.168.1.20", "192.168.1.30"],
+            }
+        )
+        result = lc._estimate_ip_switch_reason(df)
+        assert cfg.COL_RISK_LEVEL in result.columns
+        assert (result[cfg.COL_RISK_LEVEL] == cfg.RISK_LOW).all()
+
+    def test_private_cross_fast_switch_risk_high(self):
+        df = pd.DataFrame(
+            {
+                cfg.COL_EMPLOYEE_ID: ["emp1", "emp1", "emp1"],
+                cfg.COL_ACCESS_TIME: [
+                    datetime(2023, 9, 1, 9, 0),
+                    datetime(2023, 9, 1, 9, 3),
+                    datetime(2023, 9, 1, 9, 45),
+                ],
+                cfg.COL_IP: ["10.0.1.10", "172.16.1.20", "192.168.1.30"],
+            }
+        )
+        result = lc._estimate_ip_switch_reason(df)
+        assert (result[cfg.COL_RISK_LEVEL] == cfg.RISK_HIGH).all()
+
+    def test_unique_ip_and_subnet_count_columns(self):
+        df = pd.DataFrame(
+            {
+                cfg.COL_EMPLOYEE_ID: ["emp1", "emp1", "emp1"],
+                cfg.COL_ACCESS_TIME: [
+                    datetime(2023, 9, 1, 9, 0),
+                    datetime(2023, 9, 1, 9, 30),
+                    datetime(2023, 9, 1, 9, 45),
+                ],
+                cfg.COL_IP: ["10.1.1.10", "10.1.2.20", "10.1.2.30"],
+            }
+        )
+        result = lc._estimate_ip_switch_reason(df)
+        assert cfg.COL_UNIQUE_IP_COUNT in result.columns
+        assert cfg.COL_UNIQUE_SUBNET_COUNT in result.columns
+        assert (result[cfg.COL_UNIQUE_IP_COUNT] == 3).all()
+        assert (result[cfg.COL_UNIQUE_SUBNET_COUNT] == 2).all()
+
+    def test_empty_and_filter_empty_have_new_columns(self):
+        empty_df = pd.DataFrame(
+            columns=[cfg.COL_EMPLOYEE_ID, cfg.COL_ACCESS_TIME, cfg.COL_IP]
+        )
+        result = lc._estimate_ip_switch_reason(empty_df)
+        for col in [
+            cfg.COL_RISK_LEVEL,
+            cfg.COL_UNIQUE_IP_COUNT,
+            cfg.COL_UNIQUE_SUBNET_COUNT,
+        ]:
+            assert col in result.columns
+
+        # Also test _filter_ip_switch empty path
+        non_flagged = pd.DataFrame(
+            {
+                cfg.COL_EMPLOYEE_ID: ["emp1", "emp1"],
+                cfg.COL_ACCESS_TIME: [
+                    datetime(2023, 9, 1, 9, 0),
+                    datetime(2023, 9, 1, 9, 30),
+                ],
+                cfg.COL_IP: ["192.168.1.1", "192.168.1.2"],
+            }
+        )
+        result2 = lc._filter_ip_switch(non_flagged)
+        for col in [
+            cfg.COL_RISK_LEVEL,
+            cfg.COL_UNIQUE_IP_COUNT,
+            cfg.COL_UNIQUE_SUBNET_COUNT,
+        ]:
+            assert col in result2.columns
 
 
 class TestFilterIpSwitchNaN:

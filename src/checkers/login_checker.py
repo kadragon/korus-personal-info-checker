@@ -151,6 +151,40 @@ def _split_into_clusters(
 logger = logging.getLogger(__name__)
 
 
+def _is_private_ip(ip: str) -> bool:
+    """Check if an IP address is in RFC 1918 private range."""
+    try:
+        parts = str(ip).split(".")
+        if len(parts) != 4:
+            return False
+        first = int(parts[0])
+        second = int(parts[1])
+    except (ValueError, IndexError):
+        return False
+
+    if first == 10:
+        return True
+    if first == 172 and 16 <= second <= 31:
+        return True
+    return bool(first == 192 and second == 168)
+
+
+_RISK_MAP: dict[str, tuple[str, str]] = {
+    # reason -> (base_risk, fast_switch_risk)
+    cfg.REASON_SAME_SUBNET: (cfg.RISK_LOW, cfg.RISK_MEDIUM),
+    cfg.REASON_CAMPUS_MOVE: (cfg.RISK_MEDIUM, cfg.RISK_MEDIUM),
+    cfg.REASON_PRIVATE_CROSS_SUBNET: (cfg.RISK_MEDIUM, cfg.RISK_HIGH),
+    cfg.REASON_PRIVATE_PUBLIC_MIX: (cfg.RISK_HIGH, cfg.RISK_HIGH),
+    cfg.REASON_PUBLIC_CROSS_NETWORK: (cfg.RISK_HIGH, cfg.RISK_HIGH),
+}
+
+
+def _calculate_risk_level(reason: str, has_fast_switch: bool) -> str:
+    """Calculate risk level based on reason and fast-switch status."""
+    base, fast = _RISK_MAP.get(reason, (cfg.RISK_MEDIUM, cfg.RISK_MEDIUM))
+    return fast if has_fast_switch else base
+
+
 def _estimate_ip_switch_reason(df: pd.DataFrame) -> pd.DataFrame:
     """Estimate the reason for IP switching patterns per cluster.
 
@@ -173,6 +207,9 @@ def _estimate_ip_switch_reason(df: pd.DataFrame) -> pd.DataFrame:
     """
     result = df.copy()
     result[cfg.COL_ESTIMATED_REASON] = ""
+    result[cfg.COL_RISK_LEVEL] = ""
+    result[cfg.COL_UNIQUE_IP_COUNT] = 0
+    result[cfg.COL_UNIQUE_SUBNET_COUNT] = 0
 
     if result.empty:
         return result
@@ -203,7 +240,16 @@ def _estimate_ip_switch_reason(df: pd.DataFrame) -> pd.DataFrame:
             slash24_set = {(o[0], o[1], o[2]) for o in octets}
 
             if len(slash16_set) > 1:
-                reason = cfg.REASON_EXTERNAL_NETWORK
+                # Different /16 — classify by private/public status
+                ip_strings = [".".join(o) for o in octets]
+                all_private = all(_is_private_ip(ip) for ip in ip_strings)
+                any_private = any(_is_private_ip(ip) for ip in ip_strings)
+                if all_private:
+                    reason = cfg.REASON_PRIVATE_CROSS_SUBNET
+                elif any_private:
+                    reason = cfg.REASON_PRIVATE_PUBLIC_MIX
+                else:
+                    reason = cfg.REASON_PUBLIC_CROSS_NETWORK
             elif len(slash24_set) > 1:
                 reason = cfg.REASON_CAMPUS_MOVE
             else:
@@ -227,10 +273,15 @@ def _estimate_ip_switch_reason(df: pd.DataFrame) -> pd.DataFrame:
                         has_fast_switch = True
                         break
 
+            risk = _calculate_risk_level(reason, has_fast_switch)
+
             if has_fast_switch:
                 reason = f"{reason}{cfg.REASON_FAST_SWITCH_SUFFIX}"
 
             result.loc[cluster.index, cfg.COL_ESTIMATED_REASON] = reason
+            result.loc[cluster.index, cfg.COL_RISK_LEVEL] = risk
+            result.loc[cluster.index, cfg.COL_UNIQUE_IP_COUNT] = len(octets)
+            result.loc[cluster.index, cfg.COL_UNIQUE_SUBNET_COUNT] = len(slash24_set)
 
     return result
 
@@ -297,4 +348,7 @@ def _filter_ip_switch(df: pd.DataFrame) -> pd.DataFrame:
     else:
         empty_df = pd.DataFrame(columns=df.columns)
         empty_df[cfg.COL_ESTIMATED_REASON] = pd.Series(dtype="str")
+        empty_df[cfg.COL_RISK_LEVEL] = pd.Series(dtype="str")
+        empty_df[cfg.COL_UNIQUE_IP_COUNT] = pd.Series(dtype="int")
+        empty_df[cfg.COL_UNIQUE_SUBNET_COUNT] = pd.Series(dtype="int")
         return empty_df

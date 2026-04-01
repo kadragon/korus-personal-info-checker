@@ -27,6 +27,18 @@ REASON_SAME_SUBNET = "동일 네트워크 내 PC 변경"
 REASON_CAMPUS_MOVE = "캠퍼스 내 이동 추정"
 REASON_EXTERNAL_NETWORK = "외부 네트워크 접속 포함"
 REASON_FAST_SWITCH_SUFFIX = "(빠른 전환)"
+# Refined reason strings (replaces REASON_EXTERNAL_NETWORK for different /16 cases)
+REASON_PRIVATE_CROSS_SUBNET = "사설 네트워크 간 이동"
+REASON_PRIVATE_PUBLIC_MIX = "사설/공인 네트워크 혼용"
+REASON_PUBLIC_CROSS_NETWORK = "공인 네트워크 간 전환"
+# Risk level
+COL_RISK_LEVEL = "위험도"
+RISK_LOW = "낮음"
+RISK_MEDIUM = "중간"
+RISK_HIGH = "높음"
+# Analysis metadata
+COL_UNIQUE_IP_COUNT = "고유IP수"
+COL_UNIQUE_SUBNET_COUNT = "고유서브넷수"
 
 # --- 개인정보 파일 접근 검사기 (personal_file_checker.py) ---
 PERSONAL_INFO_ACCESS_LOG_PREFIX = "개인정보 접속기록 조회_"
