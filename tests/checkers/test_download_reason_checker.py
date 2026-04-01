@@ -226,12 +226,14 @@ class TestRunCheck:
         self, temp_dir, sample_download_df, mocker
     ):
         merged_path = os.path.join(temp_dir, "merged.xlsx")
-        access_df = pd.DataFrame({
-            cfg.COL_EMPLOYEE_ID: ["emp1"],
-            cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 10, 2)],
-            cfg.COL_PROGRAM_NAME: ["인사조회"],
-            cfg.COL_JOB_PERFORMANCE: ["조회"],
-        })
+        access_df = pd.DataFrame(
+            {
+                cfg.COL_EMPLOYEE_ID: ["emp1"],
+                cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 10, 2)],
+                cfg.COL_PROGRAM_NAME: ["인사조회"],
+                cfg.COL_JOB_PERFORMANCE: ["조회"],
+            }
+        )
         mocker.patch("src.checkers.download_reason_checker.print_checker_header")
         mocker.patch("src.checkers.download_reason_checker.print_info")
         mocker.patch(
@@ -255,7 +257,6 @@ class TestRunCheck:
         assert os.path.exists(merged_path)
         saved_df = pd.read_excel(merged_path)
         assert cfg.COL_ACCESS_LOG_SUMMARY in saved_df.columns
-        assert cfg.COL_NEAREST_ACCESS_GAP in saved_df.columns
 
     def test_run_check_without_access_logs_graceful(
         self, temp_dir, sample_download_df, mocker
@@ -278,8 +279,7 @@ class TestRunCheck:
         assert result == len(sample_download_df)
         # Should have logged a warning about missing access logs
         warning_calls = [
-            c for c in mock_print_info.call_args_list
-            if "접속기록" in str(c)
+            c for c in mock_print_info.call_args_list if "접속기록" in str(c)
         ]
         assert len(warning_calls) > 0
 
@@ -287,54 +287,105 @@ class TestRunCheck:
 class TestEnrichWithAccessLogSummary:
     def test_empty_access_log_preserves_original(self, sample_download_df):
         access_df = pd.DataFrame(
-            columns=[cfg.COL_EMPLOYEE_ID, cfg.COL_ACCESS_TIME,
-                     cfg.COL_PROGRAM_NAME, cfg.COL_JOB_PERFORMANCE]
+            columns=[
+                cfg.COL_EMPLOYEE_ID,
+                cfg.COL_ACCESS_TIME,
+                cfg.COL_PROGRAM_NAME,
+                cfg.COL_JOB_PERFORMANCE,
+            ]
         )
         result = drc._enrich_with_access_log_summary(
             sample_download_df, access_df, cfg.CROSS_REF_TIME_WINDOW_MINUTES
         )
         assert len(result) == len(sample_download_df)
         assert cfg.COL_ACCESS_LOG_SUMMARY in result.columns
-        assert cfg.COL_NEAREST_ACCESS_GAP in result.columns
+        assert "최근접속기록거리(분)" not in result.columns
         assert all(result[cfg.COL_ACCESS_LOG_SUMMARY] == "")
 
-    def test_window_match_produces_summary(self, sample_download_df):
-        access_df = pd.DataFrame({
-            cfg.COL_EMPLOYEE_ID: ["emp1"],
-            cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 10, 2)],
-            cfg.COL_PROGRAM_NAME: ["인사조회"],
-            cfg.COL_JOB_PERFORMANCE: ["조회"],
-        })
+    def test_before_window_match_produces_summary_with_prefix(self, sample_download_df):
+        # emp1 downloads at 10:00, access at 9:58 (2min before) -> [5분이내]
+        access_df = pd.DataFrame(
+            {
+                cfg.COL_EMPLOYEE_ID: ["emp1"],
+                cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 9, 58)],
+                cfg.COL_PROGRAM_NAME: ["인사조회"],
+                cfg.COL_JOB_PERFORMANCE: ["조회"],
+            }
+        )
         result = drc._enrich_with_access_log_summary(
             sample_download_df, access_df, cfg.CROSS_REF_TIME_WINDOW_MINUTES
         )
         summary = result.loc[
             result[cfg.COL_EMPLOYEE_ID] == "emp1", cfg.COL_ACCESS_LOG_SUMMARY
         ].iloc[0]
-        assert summary == "인사조회(조회)"
+        assert summary == "[5분이내] 인사조회"
 
-    def test_matched_gap_is_zero(self, sample_download_df):
-        access_df = pd.DataFrame({
-            cfg.COL_EMPLOYEE_ID: ["emp1"],
-            cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 10, 2)],
-            cfg.COL_PROGRAM_NAME: ["인사조회"],
-            cfg.COL_JOB_PERFORMANCE: ["조회"],
-        })
+    def test_after_download_time_no_match(self, sample_download_df):
+        # emp1 downloads at 10:00, access at 10:02 (after) -> no match
+        access_df = pd.DataFrame(
+            {
+                cfg.COL_EMPLOYEE_ID: ["emp1"],
+                cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 10, 2)],
+                cfg.COL_PROGRAM_NAME: ["인사조회"],
+                cfg.COL_JOB_PERFORMANCE: ["조회"],
+            }
+        )
         result = drc._enrich_with_access_log_summary(
             sample_download_df, access_df, cfg.CROSS_REF_TIME_WINDOW_MINUTES
         )
-        gap = result.loc[
-            result[cfg.COL_EMPLOYEE_ID] == "emp1", cfg.COL_NEAREST_ACCESS_GAP
+        summary = result.loc[
+            result[cfg.COL_EMPLOYEE_ID] == "emp1", cfg.COL_ACCESS_LOG_SUMMARY
         ].iloc[0]
-        assert gap == 0
+        assert summary == ""
 
-    def test_outside_window_no_match(self, sample_download_df):
-        access_df = pd.DataFrame({
-            cfg.COL_EMPLOYEE_ID: ["emp1"],
-            cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 10, 10)],
-            cfg.COL_PROGRAM_NAME: ["인사조회"],
-            cfg.COL_JOB_PERFORMANCE: ["조회"],
-        })
+    def test_expands_to_10min_window(self, sample_download_df):
+        # emp1 downloads at 10:00, access at 9:52 (8min before)
+        # Not in 5min, but in 10min -> [10분이내]
+        access_df = pd.DataFrame(
+            {
+                cfg.COL_EMPLOYEE_ID: ["emp1"],
+                cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 9, 52)],
+                cfg.COL_PROGRAM_NAME: ["인사조회"],
+                cfg.COL_JOB_PERFORMANCE: ["조회"],
+            }
+        )
+        result = drc._enrich_with_access_log_summary(
+            sample_download_df, access_df, cfg.CROSS_REF_TIME_WINDOW_MINUTES
+        )
+        summary = result.loc[
+            result[cfg.COL_EMPLOYEE_ID] == "emp1", cfg.COL_ACCESS_LOG_SUMMARY
+        ].iloc[0]
+        assert summary == "[10분이내] 인사조회"
+
+    def test_expands_to_15min_window(self, sample_download_df):
+        # emp1 downloads at 10:00, access at 9:48 (12min before)
+        # Not in 5 or 10min, but in 15min -> [15분이내]
+        access_df = pd.DataFrame(
+            {
+                cfg.COL_EMPLOYEE_ID: ["emp1"],
+                cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 9, 48)],
+                cfg.COL_PROGRAM_NAME: ["인사조회"],
+                cfg.COL_JOB_PERFORMANCE: ["조회"],
+            }
+        )
+        result = drc._enrich_with_access_log_summary(
+            sample_download_df, access_df, cfg.CROSS_REF_TIME_WINDOW_MINUTES
+        )
+        summary = result.loc[
+            result[cfg.COL_EMPLOYEE_ID] == "emp1", cfg.COL_ACCESS_LOG_SUMMARY
+        ].iloc[0]
+        assert summary == "[15분이내] 인사조회"
+
+    def test_beyond_15min_no_match(self, sample_download_df):
+        # emp1 downloads at 10:00, access at 9:44 (16min before) -> no match
+        access_df = pd.DataFrame(
+            {
+                cfg.COL_EMPLOYEE_ID: ["emp1"],
+                cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 9, 44)],
+                cfg.COL_PROGRAM_NAME: ["인사조회"],
+                cfg.COL_JOB_PERFORMANCE: ["조회"],
+            }
+        )
         result = drc._enrich_with_access_log_summary(
             sample_download_df, access_df, cfg.CROSS_REF_TIME_WINDOW_MINUTES
         )
@@ -344,185 +395,128 @@ class TestEnrichWithAccessLogSummary:
         assert summary == ""
 
     def test_different_employee_no_match(self, sample_download_df):
-        access_df = pd.DataFrame({
-            cfg.COL_EMPLOYEE_ID: ["emp999"],
-            cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 10, 2)],
-            cfg.COL_PROGRAM_NAME: ["인사조회"],
-            cfg.COL_JOB_PERFORMANCE: ["조회"],
-        })
+        access_df = pd.DataFrame(
+            {
+                cfg.COL_EMPLOYEE_ID: ["emp999"],
+                cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 10, 2)],
+                cfg.COL_PROGRAM_NAME: ["인사조회"],
+                cfg.COL_JOB_PERFORMANCE: ["조회"],
+            }
+        )
         result = drc._enrich_with_access_log_summary(
             sample_download_df, access_df, cfg.CROSS_REF_TIME_WINDOW_MINUTES
         )
         assert all(result[cfg.COL_ACCESS_LOG_SUMMARY] == "")
 
-    def test_duplicate_program_job_shows_xN(self, sample_download_df):
-        access_df = pd.DataFrame({
-            cfg.COL_EMPLOYEE_ID: ["emp1", "emp1", "emp1"],
-            cfg.COL_ACCESS_TIME: [
-                datetime(2023, 9, 1, 10, 1),
-                datetime(2023, 9, 1, 10, 2),
-                datetime(2023, 9, 1, 10, 3),
-            ],
-            cfg.COL_PROGRAM_NAME: ["인사조회", "인사조회", "급여조회"],
-            cfg.COL_JOB_PERFORMANCE: ["조회", "조회", "조회"],
-        })
+    def test_duplicate_program_shows_xN(self, sample_download_df):
+        # emp1 downloads at 10:00, accesses at 9:57, 9:58, 9:59 (before)
+        access_df = pd.DataFrame(
+            {
+                cfg.COL_EMPLOYEE_ID: ["emp1", "emp1", "emp1"],
+                cfg.COL_ACCESS_TIME: [
+                    datetime(2023, 9, 1, 9, 57),
+                    datetime(2023, 9, 1, 9, 58),
+                    datetime(2023, 9, 1, 9, 59),
+                ],
+                cfg.COL_PROGRAM_NAME: ["인사조회", "인사조회", "급여조회"],
+                cfg.COL_JOB_PERFORMANCE: ["조회", "조회", "조회"],
+            }
+        )
         result = drc._enrich_with_access_log_summary(
             sample_download_df, access_df, cfg.CROSS_REF_TIME_WINDOW_MINUTES
         )
         summary = result.loc[
             result[cfg.COL_EMPLOYEE_ID] == "emp1", cfg.COL_ACCESS_LOG_SUMMARY
         ].iloc[0]
-        assert "인사조회(조회) x2" in summary
-        assert "급여조회(조회)" in summary
-
-    def test_unmatched_gap_shows_minutes(self, sample_download_df):
-        # Access log at 10:10 is 10 min away from download at 10:00
-        access_df = pd.DataFrame({
-            cfg.COL_EMPLOYEE_ID: ["emp1"],
-            cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 10, 10)],
-            cfg.COL_PROGRAM_NAME: ["인사조회"],
-            cfg.COL_JOB_PERFORMANCE: ["조회"],
-        })
-        result = drc._enrich_with_access_log_summary(
-            sample_download_df, access_df, cfg.CROSS_REF_TIME_WINDOW_MINUTES
-        )
-        gap = result.loc[
-            result[cfg.COL_EMPLOYEE_ID] == "emp1", cfg.COL_NEAREST_ACCESS_GAP
-        ].iloc[0]
-        assert gap == 10.0
-        # Summary should be empty (outside window)
-        summary = result.loc[
-            result[cfg.COL_EMPLOYEE_ID] == "emp1", cfg.COL_ACCESS_LOG_SUMMARY
-        ].iloc[0]
-        assert summary == ""
-
-    def test_no_employee_in_access_gap_is_nan(self, sample_download_df):
-        access_df = pd.DataFrame({
-            cfg.COL_EMPLOYEE_ID: ["emp999"],
-            cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 10, 2)],
-            cfg.COL_PROGRAM_NAME: ["인사조회"],
-            cfg.COL_JOB_PERFORMANCE: ["조회"],
-        })
-        result = drc._enrich_with_access_log_summary(
-            sample_download_df, access_df, cfg.CROSS_REF_TIME_WINDOW_MINUTES
-        )
-        gap_emp1 = result.loc[
-            result[cfg.COL_EMPLOYEE_ID] == "emp1", cfg.COL_NEAREST_ACCESS_GAP
-        ].iloc[0]
-        assert pd.isna(gap_emp1)
-
-    def test_summary_includes_detail_content(self):
-        download_df = pd.DataFrame({
-            cfg.COL_EMPLOYEE_ID: ["emp1"],
-            cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 10, 0)],
-            cfg.COL_DOWNLOAD_REASON: ["연구"],
-            cfg.COL_DOWNLOAD_COUNT: [10],
-        })
-        access_df = pd.DataFrame({
-            cfg.COL_EMPLOYEE_ID: ["emp1"],
-            cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 10, 2)],
-            cfg.COL_PROGRAM_NAME: ["인사조회"],
-            cfg.COL_JOB_PERFORMANCE: ["조회"],
-            cfg.COL_DETAIL_CONTENT: ["sklstfNo=12345&param=value"],
-        })
-        result = drc._enrich_with_access_log_summary(
-            download_df, access_df, cfg.CROSS_REF_TIME_WINDOW_MINUTES
-        )
-        summary = result[cfg.COL_ACCESS_LOG_SUMMARY].iloc[0]
-        assert "인사조회(조회)" in summary
-        assert "[sklstfNo=12345&param=value]" in summary
-
-    def test_detail_content_truncated_at_50(self):
-        long_detail = "A" * 80
-        download_df = pd.DataFrame({
-            cfg.COL_EMPLOYEE_ID: ["emp1"],
-            cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 10, 0)],
-            cfg.COL_DOWNLOAD_REASON: ["연구"],
-            cfg.COL_DOWNLOAD_COUNT: [10],
-        })
-        access_df = pd.DataFrame({
-            cfg.COL_EMPLOYEE_ID: ["emp1"],
-            cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 10, 2)],
-            cfg.COL_PROGRAM_NAME: ["인사조회"],
-            cfg.COL_JOB_PERFORMANCE: ["조회"],
-            cfg.COL_DETAIL_CONTENT: [long_detail],
-        })
-        result = drc._enrich_with_access_log_summary(
-            download_df, access_df, cfg.CROSS_REF_TIME_WINDOW_MINUTES
-        )
-        summary = result[cfg.COL_ACCESS_LOG_SUMMARY].iloc[0]
-        assert "[" + "A" * 50 + "...]" in summary
+        assert "[5분이내]" in summary
+        assert "인사조회 x2" in summary
+        assert "급여조회" in summary
 
     def test_no_detail_column_still_works(self):
-        download_df = pd.DataFrame({
-            cfg.COL_EMPLOYEE_ID: ["emp1"],
-            cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 10, 0)],
-            cfg.COL_DOWNLOAD_REASON: ["연구"],
-            cfg.COL_DOWNLOAD_COUNT: [10],
-        })
-        # Access log without 상세내용 column
-        access_df = pd.DataFrame({
-            cfg.COL_EMPLOYEE_ID: ["emp1"],
-            cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 10, 2)],
-            cfg.COL_PROGRAM_NAME: ["인사조회"],
-            cfg.COL_JOB_PERFORMANCE: ["조회"],
-        })
+        download_df = pd.DataFrame(
+            {
+                cfg.COL_EMPLOYEE_ID: ["emp1"],
+                cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 10, 0)],
+                cfg.COL_DOWNLOAD_REASON: ["연구"],
+                cfg.COL_DOWNLOAD_COUNT: [10],
+            }
+        )
+        # Access at 9:58 (before download)
+        access_df = pd.DataFrame(
+            {
+                cfg.COL_EMPLOYEE_ID: ["emp1"],
+                cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 9, 58)],
+                cfg.COL_PROGRAM_NAME: ["인사조회"],
+                cfg.COL_JOB_PERFORMANCE: ["조회"],
+            }
+        )
         result = drc._enrich_with_access_log_summary(
             download_df, access_df, cfg.CROSS_REF_TIME_WINDOW_MINUTES
         )
         summary = result[cfg.COL_ACCESS_LOG_SUMMARY].iloc[0]
-        assert summary == "인사조회(조회)"
-        assert "[" not in summary
+        assert summary == "[5분이내] 인사조회"
 
     def test_dtype_mismatch_int_vs_str(self):
-        download_df = pd.DataFrame({
-            cfg.COL_EMPLOYEE_ID: [12345],
-            cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 10, 0)],
-            cfg.COL_DOWNLOAD_REASON: ["연구"],
-            cfg.COL_DOWNLOAD_COUNT: [10],
-        })
-        access_df = pd.DataFrame({
-            cfg.COL_EMPLOYEE_ID: ["12345"],
-            cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 10, 2)],
-            cfg.COL_PROGRAM_NAME: ["인사조회"],
-            cfg.COL_JOB_PERFORMANCE: ["조회"],
-        })
+        download_df = pd.DataFrame(
+            {
+                cfg.COL_EMPLOYEE_ID: [12345],
+                cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 10, 0)],
+                cfg.COL_DOWNLOAD_REASON: ["연구"],
+                cfg.COL_DOWNLOAD_COUNT: [10],
+            }
+        )
+        access_df = pd.DataFrame(
+            {
+                cfg.COL_EMPLOYEE_ID: ["12345"],
+                cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 9, 58)],
+                cfg.COL_PROGRAM_NAME: ["인사조회"],
+                cfg.COL_JOB_PERFORMANCE: ["조회"],
+            }
+        )
         result = drc._enrich_with_access_log_summary(
             download_df, access_df, cfg.CROSS_REF_TIME_WINDOW_MINUTES
         )
         summary = result[cfg.COL_ACCESS_LOG_SUMMARY].iloc[0]
-        assert summary == "인사조회(조회)"
+        assert summary == "[5분이내] 인사조회"
 
     def test_dtype_mismatch_float_vs_str(self):
-        download_df = pd.DataFrame({
-            cfg.COL_EMPLOYEE_ID: [12345.0],
-            cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 10, 0)],
-            cfg.COL_DOWNLOAD_REASON: ["연구"],
-            cfg.COL_DOWNLOAD_COUNT: [10],
-        })
-        access_df = pd.DataFrame({
-            cfg.COL_EMPLOYEE_ID: ["12345"],
-            cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 10, 2)],
-            cfg.COL_PROGRAM_NAME: ["인사조회"],
-            cfg.COL_JOB_PERFORMANCE: ["조회"],
-        })
+        download_df = pd.DataFrame(
+            {
+                cfg.COL_EMPLOYEE_ID: [12345.0],
+                cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 10, 0)],
+                cfg.COL_DOWNLOAD_REASON: ["연구"],
+                cfg.COL_DOWNLOAD_COUNT: [10],
+            }
+        )
+        access_df = pd.DataFrame(
+            {
+                cfg.COL_EMPLOYEE_ID: ["12345"],
+                cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 9, 58)],
+                cfg.COL_PROGRAM_NAME: ["인사조회"],
+                cfg.COL_JOB_PERFORMANCE: ["조회"],
+            }
+        )
         result = drc._enrich_with_access_log_summary(
             download_df, access_df, cfg.CROSS_REF_TIME_WINDOW_MINUTES
         )
         summary = result[cfg.COL_ACCESS_LOG_SUMMARY].iloc[0]
-        assert summary == "인사조회(조회)"
+        assert summary == "[5분이내] 인사조회"
 
     def test_missing_required_columns_graceful(self):
-        download_df = pd.DataFrame({
-            cfg.COL_EMPLOYEE_ID: ["emp1"],
-            cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 10, 0)],
-            cfg.COL_DOWNLOAD_REASON: ["연구"],
-            cfg.COL_DOWNLOAD_COUNT: [10],
-        })
-        access_df = pd.DataFrame({
-            cfg.COL_EMPLOYEE_ID: ["emp1"],
-            cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 10, 2)],
-        })
+        download_df = pd.DataFrame(
+            {
+                cfg.COL_EMPLOYEE_ID: ["emp1"],
+                cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 10, 0)],
+                cfg.COL_DOWNLOAD_REASON: ["연구"],
+                cfg.COL_DOWNLOAD_COUNT: [10],
+            }
+        )
+        access_df = pd.DataFrame(
+            {
+                cfg.COL_EMPLOYEE_ID: ["emp1"],
+                cfg.COL_ACCESS_TIME: [datetime(2023, 9, 1, 10, 2)],
+            }
+        )
         result = drc._enrich_with_access_log_summary(
             download_df, access_df, cfg.CROSS_REF_TIME_WINDOW_MINUTES
         )
@@ -538,7 +532,7 @@ class TestLoadAccessLogs:
             return_value=[],
         )
         mocker.patch("src.checkers.download_reason_checker.print_info")
-        result = drc._load_access_logs(temp_dir, "202309")
+        result = drc._load_access_logs(temp_dir)
         assert result is None
 
     def test_returns_none_on_environment_error(self, temp_dir, mocker):
@@ -546,10 +540,8 @@ class TestLoadAccessLogs:
             "src.checkers.download_reason_checker._find_excel_files",
             side_effect=EnvironmentError("bad dir"),
         )
-        mock_info = mocker.patch(
-            "src.checkers.download_reason_checker.print_info"
-        )
-        result = drc._load_access_logs(temp_dir, "202309")
+        mock_info = mocker.patch("src.checkers.download_reason_checker.print_info")
+        result = drc._load_access_logs(temp_dir)
         assert result is None
         assert any("오류 발생" in str(c) for c in mock_info.call_args_list)
 
@@ -562,23 +554,23 @@ class TestLoadAccessLogs:
             "src.checkers.download_reason_checker._merge_and_preprocess_files",
             return_value=None,
         )
-        mock_info = mocker.patch(
-            "src.checkers.download_reason_checker.print_info"
-        )
-        result = drc._load_access_logs(temp_dir, "202309")
+        mock_info = mocker.patch("src.checkers.download_reason_checker.print_info")
+        result = drc._load_access_logs(temp_dir)
         assert result is None
         assert any("실패" in str(c) for c in mock_info.call_args_list)
 
     def test_happy_path_returns_deduplicated_df(self, temp_dir, mocker):
-        raw_df = pd.DataFrame({
-            cfg.COL_EMPLOYEE_ID: ["emp1", "emp1"],
-            cfg.COL_ACCESS_TIME: [
-                datetime(2023, 9, 1, 10, 0),
-                datetime(2023, 9, 1, 10, 0),
-            ],
-            cfg.COL_PROGRAM_NAME: ["인사조회", "인사조회"],
-            cfg.COL_JOB_PERFORMANCE: ["조회", "조회"],
-        })
+        raw_df = pd.DataFrame(
+            {
+                cfg.COL_EMPLOYEE_ID: ["emp1", "emp1"],
+                cfg.COL_ACCESS_TIME: [
+                    datetime(2023, 9, 1, 10, 0),
+                    datetime(2023, 9, 1, 10, 0),
+                ],
+                cfg.COL_PROGRAM_NAME: ["인사조회", "인사조회"],
+                cfg.COL_JOB_PERFORMANCE: ["조회", "조회"],
+            }
+        )
         mocker.patch(
             "src.checkers.download_reason_checker._find_excel_files",
             return_value=["file.xlsx"],
@@ -588,19 +580,19 @@ class TestLoadAccessLogs:
             return_value=raw_df,
         )
         mocker.patch("src.checkers.download_reason_checker.print_info")
-        result = drc._load_access_logs(temp_dir, "202309")
+        result = drc._load_access_logs(temp_dir)
         assert result is not None
         assert len(result) == 1
 
-    def test_uses_prev_month_for_prefix(self, temp_dir, mocker):
+    def test_searches_by_prefix_only_without_date(self, temp_dir, mocker):
         mock_find = mocker.patch(
             "src.checkers.download_reason_checker._find_excel_files",
             return_value=[],
         )
         mocker.patch("src.checkers.download_reason_checker.print_info")
-        drc._load_access_logs(temp_dir, "202512")
+        drc._load_access_logs(temp_dir)
         called_prefix = mock_find.call_args[0][1]
-        assert "202512" in called_prefix
+        assert called_prefix == cfg.PERSONAL_INFO_ACCESS_LOG_PREFIX
 
 
 class TestRunCheckErrorIsolation:
@@ -608,9 +600,7 @@ class TestRunCheckErrorIsolation:
         self, temp_dir, sample_download_df, mocker
     ):
         mocker.patch("src.checkers.download_reason_checker.print_checker_header")
-        mock_info = mocker.patch(
-            "src.checkers.download_reason_checker.print_info"
-        )
+        mock_info = mocker.patch("src.checkers.download_reason_checker.print_info")
         mocker.patch(
             "src.checkers.download_reason_checker.find_and_prepare_excel_file",
             return_value=(sample_download_df, None),

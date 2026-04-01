@@ -27,6 +27,7 @@ from ..utils import (
     filter_by_time_conditions,
     find_and_prepare_excel_file,
     run_and_save_check,
+    save_excel_with_autofit,
 )
 
 _JAMO_PATTERN = re.compile(r"[\u3131-\u3163]")
@@ -129,9 +130,9 @@ def _normalize_employee_id(s: pd.Series) -> pd.Series:
     return s.astype(str).str.replace(r"\.0$", "", regex=True)
 
 
-def _load_access_logs(download_dir: str, prev_month: str) -> pd.DataFrame | None:
-    """Load and merge access log files for the given month."""
-    file_prefix = f"{cfg.PERSONAL_INFO_ACCESS_LOG_PREFIX}{prev_month}"
+def _load_access_logs(download_dir: str) -> pd.DataFrame | None:
+    """Load and merge access log files from the download directory."""
+    file_prefix = cfg.PERSONAL_INFO_ACCESS_LOG_PREFIX
     try:
         excel_files = _find_excel_files(download_dir, file_prefix)
     except EnvironmentError as e:
@@ -156,7 +157,6 @@ _REQUIRED_ACCESS_LOG_COLS = frozenset(
         cfg.COL_EMPLOYEE_ID,
         cfg.COL_ACCESS_TIME,
         cfg.COL_PROGRAM_NAME,
-        cfg.COL_JOB_PERFORMANCE,
     }
 )
 
@@ -169,7 +169,6 @@ def _enrich_with_access_log_summary(
     """Enrich download records with access log summary within ±window_minutes."""
     result = download_df.copy()
     result[cfg.COL_ACCESS_LOG_SUMMARY] = ""
-    result[cfg.COL_NEAREST_ACCESS_GAP] = np.nan
 
     if access_log_df.empty:
         return result
@@ -185,29 +184,17 @@ def _enrich_with_access_log_summary(
     )
     result[cfg.COL_EMPLOYEE_ID] = _normalize_employee_id(result[cfg.COL_EMPLOYEE_ID])
 
-    window_ns = np.timedelta64(window_minutes, "m")
+    window_steps = cfg.CROSS_REF_WINDOW_STEPS
 
-    has_detail = cfg.COL_DETAIL_CONTENT in access_log_df.columns
-
-    # Pre-group: sorted timestamps + labels + details as numpy arrays per employee
-    grouped: dict[str, tuple[Any, Any, Any]] = {}
+    # Pre-group: sorted timestamps + labels as numpy arrays per employee
+    grouped: dict[str, tuple[Any, Any]] = {}
     for emp_id, group in access_log_df.groupby(cfg.COL_EMPLOYEE_ID):
         sorted_group = group.sort_values(cfg.COL_ACCESS_TIME)
         timestamps = sorted_group[cfg.COL_ACCESS_TIME].values
-        labels = (
-            sorted_group[cfg.COL_PROGRAM_NAME].astype(str)
-            + "("
-            + sorted_group[cfg.COL_JOB_PERFORMANCE].astype(str)
-            + ")"
-        ).values
-        if has_detail:
-            details = sorted_group[cfg.COL_DETAIL_CONTENT].fillna("").astype(str).values
-        else:
-            details = np.full(len(sorted_group), "", dtype=object)
-        grouped[str(emp_id)] = (timestamps, labels, details)
+        labels = sorted_group[cfg.COL_PROGRAM_NAME].astype(str).values
+        grouped[str(emp_id)] = (timestamps, labels)
 
     summaries = result[cfg.COL_ACCESS_LOG_SUMMARY].to_numpy(copy=True)
-    gaps = result[cfg.COL_NEAREST_ACCESS_GAP].to_numpy(copy=True, dtype=float)
 
     emp_ids = result[cfg.COL_EMPLOYEE_ID].values
     access_times = result[cfg.COL_ACCESS_TIME].values
@@ -217,52 +204,49 @@ def _enrich_with_access_log_summary(
         if emp_id not in grouped:
             continue
 
-        timestamps, labels, details = grouped[emp_id]
+        timestamps, labels = grouped[emp_id]
         download_time = access_times[i]
 
-        diffs = np.abs(timestamps - download_time)
-        min_gap_minutes = round(
-            diffs.min().astype("timedelta64[s]").astype(float) / 60, 1
-        )
-
-        lo = np.searchsorted(timestamps, download_time - window_ns, side="left")
-        hi = np.searchsorted(timestamps, download_time + window_ns, side="right")
-
-        if lo >= hi:
-            gaps[i] = min_gap_minutes
+        # Only consider access logs before the download time
+        before_mask = timestamps <= download_time
+        if not before_mask.any():
             continue
 
-        gaps[i] = 0
+        before_timestamps = timestamps[before_mask]
+        before_labels = labels[before_mask]
 
-        matched_labels = labels[lo:hi]
-        matched_details = details[lo:hi]
+        # Try expanding windows: 5 -> 10 -> 15
+        matched_window = None
+        for step in window_steps:
+            window_ns = np.timedelta64(step, "m")
+            lo = np.searchsorted(
+                before_timestamps, download_time - window_ns, side="left"
+            )
+            hi = len(before_timestamps)
+            if lo < hi:
+                matched_window = step
+                matched_labels = before_labels[lo:hi]
+                break
 
-        # Build summary with detail snippets
-        entries: dict[str, dict[str, Any]] = {}
-        for label, detail in zip(matched_labels, matched_details, strict=True):
+        if matched_window is None:
+            continue
+
+        # Build summary: program name with count
+        counts: dict[str, int] = {}
+        for label in matched_labels:
             label_str = str(label)
-            if label_str not in entries:
-                entries[label_str] = {"count": 0, "detail": ""}
-            entries[label_str]["count"] += 1
-            if detail and not entries[label_str]["detail"]:
-                truncated = detail[: cfg.DETAIL_TRUNCATE_LEN]
-                if len(detail) > cfg.DETAIL_TRUNCATE_LEN:
-                    truncated += "..."
-                entries[label_str]["detail"] = truncated
+            counts[label_str] = counts.get(label_str, 0) + 1
 
         parts = []
-        for label_str, info in entries.items():
+        for label_str, count in counts.items():
             part = label_str
-            if info["count"] > 1:
-                part += f" x{info['count']}"
-            if info["detail"]:
-                part += f" [{info['detail']}]"
+            if count > 1:
+                part += f" x{count}"
             parts.append(part)
 
-        summaries[i] = "; ".join(parts)
+        summaries[i] = f"[{matched_window}분이내] " + "; ".join(parts)
 
     result[cfg.COL_ACCESS_LOG_SUMMARY] = summaries
-    result[cfg.COL_NEAREST_ACCESS_GAP] = gaps
     return result
 
 
@@ -308,14 +292,14 @@ def run_check(download_dir: str, save_dir: str, prev_month: str) -> int:
     if df is None:
         return 0
 
-    access_log_df = _load_access_logs(download_dir, prev_month)
+    access_log_df = _load_access_logs(download_dir)
     if access_log_df is not None:
         try:
             df = _enrich_with_access_log_summary(
                 df, access_log_df, cfg.CROSS_REF_TIME_WINDOW_MINUTES
             )
             if merged_save_path is not None:
-                df.to_excel(merged_save_path, index=False)
+                save_excel_with_autofit(df, merged_save_path)
         except Exception as e:
             print_info(
                 f"접속기록 교차 검증 중 오류 발생: {e}. 교차 검증 없이 진행합니다."
