@@ -4,14 +4,17 @@ It provides centralized functions for outputting headers, results,
 summaries, error messages, etc.
 """
 
+import sys
+
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 
 # 전역 콘솔 객체 생성
 # legacy_windows=False to ensure proper Unicode support in PyInstaller builds
-# force_terminal=True to prevent cell_len issues in PyInstaller builds
-console = Console(markup=True, legacy_windows=False, force_terminal=True)
+# force_terminal only in frozen (PyInstaller) builds to prevent cell_len issues
+_is_frozen = getattr(sys, "frozen", False)
+console = Console(markup=True, legacy_windows=False, force_terminal=_is_frozen)
 
 
 def print_header(title: str) -> None:

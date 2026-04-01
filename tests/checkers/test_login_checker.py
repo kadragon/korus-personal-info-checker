@@ -301,32 +301,31 @@ class TestEstimateIpSwitchReason:
         assert cfg.REASON_FAST_SWITCH_SUFFIX not in reason
 
 
-class TestIsPrivateIp:
+class TestIsPrivateIpOctets:
     def test_10_range_is_private(self):
-        assert lc._is_private_ip("10.0.0.1") is True
-        assert lc._is_private_ip("10.255.255.255") is True
+        assert lc._is_private_ip_octets(["10", "0", "0", "1"]) is True
+        assert lc._is_private_ip_octets(["10", "255", "255", "255"]) is True
 
     def test_172_range_is_private_with_boundaries(self):
-        assert lc._is_private_ip("172.16.0.1") is True
-        assert lc._is_private_ip("172.31.255.255") is True
+        assert lc._is_private_ip_octets(["172", "16", "0", "1"]) is True
+        assert lc._is_private_ip_octets(["172", "31", "255", "255"]) is True
         # Boundaries: 172.15 and 172.32 are NOT private
-        assert lc._is_private_ip("172.15.0.1") is False
-        assert lc._is_private_ip("172.32.0.1") is False
+        assert lc._is_private_ip_octets(["172", "15", "0", "1"]) is False
+        assert lc._is_private_ip_octets(["172", "32", "0", "1"]) is False
 
     def test_192_168_range_is_private(self):
-        assert lc._is_private_ip("192.168.0.1") is True
-        assert lc._is_private_ip("192.168.255.255") is True
-        assert lc._is_private_ip("192.169.0.1") is False
+        assert lc._is_private_ip_octets(["192", "168", "0", "1"]) is True
+        assert lc._is_private_ip_octets(["192", "168", "255", "255"]) is True
+        assert lc._is_private_ip_octets(["192", "169", "0", "1"]) is False
 
     def test_public_ip_returns_false(self):
-        assert lc._is_private_ip("8.8.8.8") is False
-        assert lc._is_private_ip("203.0.113.1") is False
-        assert lc._is_private_ip("1.1.1.1") is False
+        assert lc._is_private_ip_octets(["8", "8", "8", "8"]) is False
+        assert lc._is_private_ip_octets(["203", "0", "113", "1"]) is False
+        assert lc._is_private_ip_octets(["1", "1", "1", "1"]) is False
 
     def test_malformed_input_returns_false(self):
-        assert lc._is_private_ip("malformed") is False
-        assert lc._is_private_ip("") is False
-        assert lc._is_private_ip("10.1") is False
+        assert lc._is_private_ip_octets(["malformed"]) is False
+        assert lc._is_private_ip_octets([]) is False
 
 
 class TestCalculateRiskLevel:

@@ -91,29 +91,25 @@ def _apply_korus_style(ws: Worksheet) -> None:
         for w in col_max_data_widths
     ]
 
-    # Header row (row 1)
-    ws.row_dimensions[1].height = _HEADER_ROW_HEIGHT
-    for col_idx in range(1, max_col + 1):
-        cell = ws.cell(row=1, column=col_idx)
-        cell.font = _HEADER_FONT
-        cell.fill = _HEADER_FILL
-        cell.alignment = _CENTER_ALIGN
-        if col_idx == 1:
-            cell.border = Border(top=thin, bottom=thin, left=thin, right=thin)
-        else:
-            cell.border = Border(top=thin, bottom=thin, right=thin)
-
-    # Data rows (row 2+)
-    for row_idx in range(2, max_row + 1):
-        ws.row_dimensions[row_idx].height = _DATA_ROW_HEIGHT
+    # Apply formatting to all rows in a single pass
+    for row_idx in range(1, max_row + 1):
+        is_header = row_idx == 1
+        ws.row_dimensions[row_idx].height = (
+            _HEADER_ROW_HEIGHT if is_header else _DATA_ROW_HEIGHT
+        )
         for col_idx in range(1, max_col + 1):
             cell = ws.cell(row=row_idx, column=col_idx)
-            cell.font = _DATA_FONT
-            cell.alignment = col_alignments[col_idx - 1]
-            if col_idx == 1:
-                cell.border = Border(bottom=thin, left=thin, right=thin)
-            else:
-                cell.border = Border(bottom=thin, right=thin)
+            cell.font = _HEADER_FONT if is_header else _DATA_FONT
+            cell.alignment = _CENTER_ALIGN if is_header else col_alignments[col_idx - 1]
+            if is_header:
+                cell.fill = _HEADER_FILL
+            has_left = col_idx == 1
+            cell.border = Border(
+                top=thin if is_header else None,
+                bottom=thin,
+                left=thin if has_left else None,
+                right=thin,
+            )
 
 
 def get_prev_month_yyyymm() -> str:

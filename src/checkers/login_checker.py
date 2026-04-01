@@ -151,14 +151,15 @@ def _split_into_clusters(
 logger = logging.getLogger(__name__)
 
 
-def _is_private_ip(ip: str) -> bool:
-    """Check if an IP address is in RFC 1918 private range."""
+def _is_private_ip_octets(octets: list[str]) -> bool:
+    """Check if parsed IP octets are in RFC 1918 private range."""
     try:
-        parts = str(ip).split(".")
-        if len(parts) != 4:
+        if len(octets) != 4:
             return False
-        first = int(parts[0])
-        second = int(parts[1])
+        nums = [int(o) for o in octets]
+        if any(n < 0 or n > 255 for n in nums):
+            return False
+        first, second = nums[0], nums[1]
     except (ValueError, IndexError):
         return False
 
@@ -241,9 +242,8 @@ def _estimate_ip_switch_reason(df: pd.DataFrame) -> pd.DataFrame:
 
             if len(slash16_set) > 1:
                 # Different /16 — classify by private/public status
-                ip_strings = [".".join(o) for o in octets]
-                all_private = all(_is_private_ip(ip) for ip in ip_strings)
-                any_private = any(_is_private_ip(ip) for ip in ip_strings)
+                all_private = all(_is_private_ip_octets(o) for o in octets)
+                any_private = any(_is_private_ip_octets(o) for o in octets)
                 if all_private:
                     reason = cfg.REASON_PRIVATE_CROSS_SUBNET
                 elif any_private:
@@ -256,11 +256,11 @@ def _estimate_ip_switch_reason(df: pd.DataFrame) -> pd.DataFrame:
                 reason = cfg.REASON_SAME_SUBNET
 
             # Check for fast IP switching within the cluster
-            sorted_cluster = cluster.sort_values(cfg.COL_ACCESS_TIME)
+            # (cluster is already sorted by _split_into_clusters)
             has_fast_switch = False
-            for i in range(1, len(sorted_cluster)):
-                prev_row = sorted_cluster.iloc[i - 1]
-                curr_row = sorted_cluster.iloc[i]
+            for i in range(1, len(cluster)):
+                prev_row = cluster.iloc[i - 1]
+                curr_row = cluster.iloc[i]
                 prev_ip = prev_row[cfg.COL_IP]
                 curr_ip = curr_row[cfg.COL_IP]
                 if pd.notna(prev_ip) and pd.notna(curr_ip) and prev_ip != curr_ip:
