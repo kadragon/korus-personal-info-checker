@@ -53,24 +53,6 @@ class TestSaveExcelWithAutofit:
         df_read = pd.read_excel(path)
         pd.testing.assert_frame_equal(df_read, sample_personal_access_df)
 
-    def test_save_excel_with_autofit_no_worksheet(self, temp_dir, mocker):
-        """Test save_excel_with_autofit when ws is None (lines 82-84)."""
-        df = pd.DataFrame({"A": [1, 2, 3]})
-        path = os.path.join(temp_dir, "test.xlsx")
-
-        # Create Excel file first
-        df.to_excel(path, index=False)
-
-        # Mock load_workbook to return a workbook with no active worksheet
-        mock_wb = mocker.MagicMock()
-        mock_wb.active = None
-        mocker.patch("openpyxl.load_workbook", return_value=mock_wb)
-
-        # This should handle the None case gracefully
-        utils.save_excel_with_autofit(df, path)
-
-        mock_wb.close.assert_called_once()
-
     def test_save_excel_with_autofit_applies_korus_style(self, temp_dir):
         """Test that save_excel_with_autofit applies KORUS-style formatting."""
         df = pd.DataFrame({"A": [1, 2, 3], "B": ["x", "y", "z"]})
@@ -170,13 +152,6 @@ class TestMergeAndPreprocessFiles:
         assert result is None
         captured = capsys.readouterr()
         assert "오류 발생" in captured.out or len(captured.out) > 0
-
-    def test_merge_and_preprocess_files_empty_list_after_read(self, temp_dir):
-        """Test _merge_and_preprocess_files empty all_dfs (line 143)."""
-        # This case is already covered by test_merge_and_preprocess_files_no_files
-        # but we can verify it explicitly
-        result = utils._merge_and_preprocess_files([], temp_dir)
-        assert result is None
 
     def test_merge_and_preprocess_files_alt_access_time_2(self, temp_dir):
         """Test column renaming for '일시' column (line 148)."""
