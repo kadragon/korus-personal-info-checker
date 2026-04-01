@@ -14,11 +14,13 @@ This script is designed to be executed as the application's primary entry point.
 import importlib
 import os
 import pkgutil
+from datetime import datetime
 from types import ModuleType
 
 from dotenv import load_dotenv
 
 from . import checkers
+from . import config as cfg
 from .config import ZIP_FILE_PREFIXES
 from .display import (
     print_error,
@@ -27,6 +29,8 @@ from .display import (
     print_summary,
     print_zip_header,
 )
+from .hwpx_writer import generate_hwpx_report
+from .report_generator import collect_check_results
 from .utils import (
     get_prev_month_yyyymm,
     make_save_dir,
@@ -76,6 +80,16 @@ def discover_and_run_checkers(
     return total_count
 
 
+def _find_hwpx_template(download_dir: str) -> str | None:
+    """Find a HWPX template file in download_dir matching the report base prefix."""
+    if not os.path.isdir(download_dir):
+        return None
+    for f in os.listdir(download_dir):
+        if f.startswith(cfg.HWPX_REPORT_BASE) and f.endswith(".hwpx"):
+            return os.path.join(download_dir, f)
+    return None
+
+
 def _run_inspection(
     download_dir: str, reports_save_dir: str, prev_month_str: str
 ) -> None:
@@ -96,6 +110,33 @@ def _run_inspection(
         zip_files_by_prefix(reports_save_dir, ZIP_FILE_PREFIXES)
     except Exception as e:
         print_error(f"압축 작업 중 오류 발생: {e}")
+
+    # Generate HWPX report if template exists
+    template_path = _find_hwpx_template(download_dir)
+    if template_path is not None:
+        year = int(prev_month_str[:4])
+        month = int(prev_month_str[4:])
+        target_month_label = f"({year}년 {month}월) "
+        today = datetime.today()
+        inspection_date = f"{today.year}. {today.month}. {today.day}."
+
+        output_path = os.path.join(
+            reports_save_dir,
+            f"{cfg.HWPX_REPORT_BASE}_{prev_month_str}.hwpx",
+        )
+        try:
+            results = collect_check_results(reports_save_dir, prev_month_str)
+            generate_hwpx_report(
+                template_path=template_path,
+                output_path=output_path,
+                inspection_date=inspection_date,
+                log_count=total_count,
+                target_month_label=target_month_label,
+                results=results,
+            )
+            print_info(f"HWPX 점검 대장 생성: {os.path.basename(output_path)}")
+        except Exception as e:
+            print_error(f"HWPX 점검 대장 생성 중 오류 발생: {e}")
 
     print_summary(reports_save_dir, total_count)
 

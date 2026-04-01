@@ -5,9 +5,12 @@ GENERATED FROM SPEC-test-coverage-improvement-1
 Trace: SPEC-test-coverage-improvement-1, TEST-main-1
 """
 
+import os
+from pathlib import Path
 
-
+from src import config as cfg
 from src import main
+from src.report_generator import CheckResults
 
 
 class TestDiscoverAndRunCheckers:
@@ -82,7 +85,7 @@ class TestDiscoverAndRunCheckers:
         # Mock import to raise exception during execution
         mocker.patch(
             "importlib.import_module",
-            side_effect=Exception("Unexpected error during check")
+            side_effect=Exception("Unexpected error during check"),
         )
 
         result = main.discover_and_run_checkers("download_dir", "save_dir", "202309")
@@ -139,18 +142,15 @@ class TestMain:
 
         # Mock all the functions called in main()
         mock_get_prev_month = mocker.patch(
-            "src.main.get_prev_month_yyyymm",
-            return_value="202311"
+            "src.main.get_prev_month_yyyymm", return_value="202311"
         )
         mock_make_save_dir = mocker.patch(
-            "src.main.make_save_dir",
-            return_value=str(save_dir / "202311")
+            "src.main.make_save_dir", return_value=str(save_dir / "202311")
         )
         mock_print_header = mocker.patch("src.main.print_header")
         mock_print_info = mocker.patch("src.main.print_info")
         mock_discover = mocker.patch(
-            "src.main.discover_and_run_checkers",
-            return_value=150
+            "src.main.discover_and_run_checkers", return_value=150
         )
         mock_print_zip_header = mocker.patch("src.main.print_zip_header")
         mock_zip_files = mocker.patch("src.main.zip_files_by_prefix")
@@ -189,8 +189,7 @@ class TestMain:
 
         # Make zip_files_by_prefix raise an exception
         mocker.patch(
-            "src.main.zip_files_by_prefix",
-            side_effect=Exception("Zip creation failed")
+            "src.main.zip_files_by_prefix", side_effect=Exception("Zip creation failed")
         )
         mock_print_error = mocker.patch("src.main.print_error")
         mocker.patch("src.main.print_summary")
@@ -215,3 +214,122 @@ class TestMain:
             assert callable(main.main)
 
 
+class TestHwpxIntegration:
+    """Tests for HWPX report generation integration in _run_inspection."""
+
+    def test_generates_hwpx_when_template_exists(self, mocker, tmp_path):
+        """_run_inspection calls generate_hwpx_report when template found."""
+        download_dir = str(tmp_path / "download")
+        save_dir = str(tmp_path / "save")
+        os.makedirs(download_dir)
+        os.makedirs(save_dir)
+
+        # Create a fake HWPX template in download_dir
+        template_name = f"{cfg.HWPX_REPORT_BASE}_202603.hwpx"
+        template_path = os.path.join(download_dir, template_name)
+        Path(template_path).touch()
+
+        mocker.patch("src.main.print_header")
+        mocker.patch("src.main.print_info")
+        mocker.patch("src.main.discover_and_run_checkers", return_value=181273)
+        mocker.patch("src.main.print_zip_header")
+        mocker.patch("src.main.zip_files_by_prefix")
+        mocker.patch("src.main.print_summary")
+        mock_collect = mocker.patch(
+            "src.main.collect_check_results",
+            return_value=CheckResults(),
+        )
+        mock_generate = mocker.patch("src.main.generate_hwpx_report")
+
+        main._run_inspection(download_dir, save_dir, "202603")
+
+        mock_collect.assert_called_once_with(save_dir, "202603")
+        mock_generate.assert_called_once()
+        call_kwargs = mock_generate.call_args
+        assert call_kwargs[1]["log_count"] == 181273 or call_kwargs[0][3] == 181273
+
+    def test_skips_hwpx_when_no_template(self, mocker, tmp_path):
+        """_run_inspection skips HWPX generation when no template found."""
+        download_dir = str(tmp_path / "download")
+        save_dir = str(tmp_path / "save")
+        os.makedirs(download_dir)
+        os.makedirs(save_dir)
+
+        mocker.patch("src.main.print_header")
+        mocker.patch("src.main.print_info")
+        mocker.patch("src.main.discover_and_run_checkers", return_value=100)
+        mocker.patch("src.main.print_zip_header")
+        mocker.patch("src.main.zip_files_by_prefix")
+        mocker.patch("src.main.print_summary")
+        mock_generate = mocker.patch("src.main.generate_hwpx_report")
+
+        main._run_inspection(download_dir, save_dir, "202603")
+
+        mock_generate.assert_not_called()
+
+    def test_hwpx_output_path_and_date_formatting(self, mocker, tmp_path):
+        """Verify output path, inspection_date, and target_month_label."""
+        download_dir = str(tmp_path / "download")
+        save_dir = str(tmp_path / "save")
+        os.makedirs(download_dir)
+        os.makedirs(save_dir)
+
+        template_name = f"{cfg.HWPX_REPORT_BASE}_202603.hwpx"
+        Path(os.path.join(download_dir, template_name)).touch()
+
+        mocker.patch("src.main.print_header")
+        mocker.patch("src.main.print_info")
+        mocker.patch("src.main.discover_and_run_checkers", return_value=5000)
+        mocker.patch("src.main.print_zip_header")
+        mocker.patch("src.main.zip_files_by_prefix")
+        mocker.patch("src.main.print_summary")
+        mocker.patch(
+            "src.main.collect_check_results",
+            return_value=CheckResults(),
+        )
+        mock_generate = mocker.patch("src.main.generate_hwpx_report")
+
+        main._run_inspection(download_dir, save_dir, "202603")
+
+        args = mock_generate.call_args
+        # output_path should be in save_dir
+        output_path = args[1].get("output_path") or args[0][1]
+        assert output_path.startswith(save_dir)
+        assert output_path.endswith(".hwpx")
+        # target_month_label
+        target_label = args[1].get("target_month_label") or args[0][4]
+        assert target_label == "(2026년 3월) "
+        # log_count
+        log_count = args[1].get("log_count") or args[0][3]
+        assert log_count == 5000
+
+    def test_hwpx_generation_error_handled(self, mocker, tmp_path):
+        """HWPX generation errors are caught and reported."""
+        download_dir = str(tmp_path / "download")
+        save_dir = str(tmp_path / "save")
+        os.makedirs(download_dir)
+        os.makedirs(save_dir)
+
+        template_name = f"{cfg.HWPX_REPORT_BASE}_202603.hwpx"
+        Path(os.path.join(download_dir, template_name)).touch()
+
+        mocker.patch("src.main.print_header")
+        mocker.patch("src.main.print_info")
+        mocker.patch("src.main.discover_and_run_checkers", return_value=100)
+        mocker.patch("src.main.print_zip_header")
+        mocker.patch("src.main.zip_files_by_prefix")
+        mocker.patch("src.main.print_summary")
+        mocker.patch(
+            "src.main.collect_check_results",
+            return_value=CheckResults(),
+        )
+        mocker.patch(
+            "src.main.generate_hwpx_report",
+            side_effect=Exception("HWPX write failed"),
+        )
+        mock_print_error = mocker.patch("src.main.print_error")
+
+        main._run_inspection(download_dir, save_dir, "202603")
+
+        mock_print_error.assert_called_once()
+        assert "HWPX" in mock_print_error.call_args[0][0]
