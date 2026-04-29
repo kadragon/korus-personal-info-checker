@@ -1,0 +1,29 @@
+# Common
+*.log
+*.tmp
+*.swp
+.DS_Store
+Thumbs.db
+.vscode/
+.fleet/
+.idea/
+*.zip
+*.tar.gz
+
+# Python
+__pycache__/
+.venv/
+venv/
+env/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+htmlcov/
+*.egg-info/
+dist/
+
+# Lock file (large; agents don't need to read it)
+uv.lock
