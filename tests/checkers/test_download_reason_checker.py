@@ -528,8 +528,8 @@ class TestEnrichWithAccessLogSummary:
 class TestLoadAccessLogs:
     def test_returns_none_when_no_files(self, temp_dir, mocker):
         mocker.patch(
-            "src.checkers.download_reason_checker._find_excel_files",
-            return_value=[],
+            "src.checkers.download_reason_checker.load_access_logs_cached",
+            return_value=None,
         )
         mocker.patch("src.checkers.download_reason_checker.print_info")
         result = drc._load_access_logs(temp_dir)
@@ -537,7 +537,7 @@ class TestLoadAccessLogs:
 
     def test_returns_none_on_environment_error(self, temp_dir, mocker):
         mocker.patch(
-            "src.checkers.download_reason_checker._find_excel_files",
+            "src.checkers.download_reason_checker.load_access_logs_cached",
             side_effect=EnvironmentError("bad dir"),
         )
         mock_info = mocker.patch("src.checkers.download_reason_checker.print_info")
@@ -545,19 +545,15 @@ class TestLoadAccessLogs:
         assert result is None
         assert any("오류 발생" in str(c) for c in mock_info.call_args_list)
 
-    def test_returns_none_on_merge_failure(self, temp_dir, mocker):
+    def test_returns_none_when_cache_returns_none(self, temp_dir, mocker):
         mocker.patch(
-            "src.checkers.download_reason_checker._find_excel_files",
-            return_value=["file.xlsx"],
-        )
-        mocker.patch(
-            "src.checkers.download_reason_checker._merge_and_preprocess_files",
+            "src.checkers.download_reason_checker.load_access_logs_cached",
             return_value=None,
         )
         mock_info = mocker.patch("src.checkers.download_reason_checker.print_info")
         result = drc._load_access_logs(temp_dir)
         assert result is None
-        assert any("실패" in str(c) for c in mock_info.call_args_list)
+        assert any("처리할 수 없습니다" in str(c) for c in mock_info.call_args_list)
 
     def test_happy_path_returns_deduplicated_df(self, temp_dir, mocker):
         raw_df = pd.DataFrame(
@@ -572,11 +568,7 @@ class TestLoadAccessLogs:
             }
         )
         mocker.patch(
-            "src.checkers.download_reason_checker._find_excel_files",
-            return_value=["file.xlsx"],
-        )
-        mocker.patch(
-            "src.checkers.download_reason_checker._merge_and_preprocess_files",
+            "src.checkers.download_reason_checker.load_access_logs_cached",
             return_value=raw_df,
         )
         mocker.patch("src.checkers.download_reason_checker.print_info")
@@ -584,15 +576,16 @@ class TestLoadAccessLogs:
         assert result is not None
         assert len(result) == 1
 
-    def test_searches_by_prefix_only_without_date(self, temp_dir, mocker):
-        mock_find = mocker.patch(
-            "src.checkers.download_reason_checker._find_excel_files",
-            return_value=[],
+    def test_searches_with_current_month_date(self, temp_dir, mocker):
+        mock_cache = mocker.patch(
+            "src.checkers.download_reason_checker.load_access_logs_cached",
+            return_value=None,
         )
         mocker.patch("src.checkers.download_reason_checker.print_info")
         drc._load_access_logs(temp_dir)
-        called_prefix = mock_find.call_args[0][1]
-        assert called_prefix == cfg.PERSONAL_INFO_ACCESS_LOG_PREFIX
+        called_prefix = mock_cache.call_args[0][1]
+        assert called_prefix.startswith(cfg.PERSONAL_INFO_ACCESS_LOG_PREFIX)
+        assert len(called_prefix) == len(cfg.PERSONAL_INFO_ACCESS_LOG_PREFIX) + 6
 
 
 class TestRunCheckErrorIsolation:

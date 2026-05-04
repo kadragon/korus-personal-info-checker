@@ -71,12 +71,19 @@ CROSS_REF_TIME_WINDOW_MINUTES = 5
 CROSS_REF_WINDOW_STEPS = [5, 10, 15]
 COL_ACCESS_LOG_SUMMARY = "접속기록요약"
 
+# --- 권한 부여 검사기 (ncmarm001_checker.py) ---
+NCMARM001_FILE_PREFIX = "NCMARM001_"
+NCMARM001_REPORT_BASE = "[붙임5] 권한 부여 기록"
+NCMARM001_UNAUTHORIZED_GRANT_SUFFIX = "승인없는권한상승"
+COL_REGISTRANT_ID = "등록자신분번호"
+
 # --- ZIP 파일 설정 ---
 # ZIP 파일 생성 시 사용할 prefix와 파일명 매핑
 ZIP_FILE_PREFIXES = [
     LOGIN_CHECK_REPORT_BASE,
     PERSONAL_INFO_REPORT_BASE,
     DOWNLOAD_REASON_REPORT_BASE,
+    NCMARM001_REPORT_BASE,
 ]
 
 # --- HWPX 보고서 생성 (report_generator.py) ---
