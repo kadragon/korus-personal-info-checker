@@ -101,6 +101,34 @@ class TestExtractAndSaveByJob:
         with pytest.raises(ValueError):
             pfc._extract_and_save_by_job(df, "path", "조회", 100, "수행업무")
 
+    def test_extract_and_save_by_job_writes_only_job_specific_rows(
+        self, temp_dir, sample_personal_access_df, mocker
+    ):
+        mocker.patch("src.checkers.personal_file_checker.print_result")
+
+        df = sample_personal_access_df.copy()
+        base_row = df.iloc[0].copy()
+        base_row["교직원ID"] = "emp1"
+        base_row["성명"] = "홍길동"
+
+        save_rows = [dict(base_row, **{"수행업무": "저장"}) for _ in range(100)]
+        view_rows = [dict(base_row, **{"수행업무": "조회"}) for _ in range(50)]
+        df = pd.DataFrame(save_rows + view_rows)
+
+        save_path = os.path.join(temp_dir, "test.xlsx")
+        pfc._extract_and_save_by_job(df, save_path, "저장", 100, "수행업무")
+
+        assert os.path.exists(save_path)
+        wb = openpyxl.load_workbook(save_path)
+        ws = wb.worksheets[0]
+        headers = [cell.value for cell in ws[1]]
+        job_col_idx = headers.index("수행업무")
+        job_values = [row[job_col_idx].value for row in ws.iter_rows(min_row=2)]
+        wb.close()
+
+        assert all(v == "저장" for v in job_values), "시트에 '저장' 외 행이 포함됨"
+        assert len(job_values) == 100
+
     def test_extract_and_save_by_job_long_sheet_name(
         self, temp_dir, sample_personal_access_df, mocker
     ):

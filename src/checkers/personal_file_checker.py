@@ -193,8 +193,8 @@ def _extract_and_save_by_job(
     """
     Identifies users who performed a specific `job` (e.g., 'query', 'save')
     more than `threshold` times.
-    For each such user, saves not only records matching that job but all records
-    to separate sheets in the specified Excel file.
+    For each such user, saves only records matching that job to separate sheets
+    in the specified Excel file.
 
     Parameters:
         df (pd.DataFrame): DataFrame containing all personal information access logs.
@@ -234,19 +234,21 @@ def _extract_and_save_by_job(
 
     with pd.ExcelWriter(save_path) as writer:
         for employee_id in target_user_ids:
-            user_all_records_df = df[df[employee_id_col_to_use] == employee_id]
+            user_job_records_df = job_specific_df[
+                job_specific_df[employee_id_col_to_use] == employee_id
+            ]
             user_name = ""
             if (
-                not user_all_records_df.empty
-                and cfg.COL_EMPLOYEE_NAME in user_all_records_df.columns
+                not user_job_records_df.empty
+                and cfg.COL_EMPLOYEE_NAME in user_job_records_df.columns
             ):
-                user_name = user_all_records_df[cfg.COL_EMPLOYEE_NAME].iloc[0]
+                user_name = user_job_records_df[cfg.COL_EMPLOYEE_NAME].iloc[0]
 
             sheet_name = f"{employee_id}_{user_name}"
             if len(sheet_name) > cfg.SHEET_NAME_MAX_CHARS:
                 sheet_name = sheet_name[: cfg.SHEET_NAME_MAX_CHARS]
 
-            user_all_records_df.to_excel(writer, sheet_name=sheet_name, index=False)
+            user_job_records_df.to_excel(writer, sheet_name=sheet_name, index=False)
 
     style_excel_file(save_path)
 

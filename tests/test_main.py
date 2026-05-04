@@ -97,6 +97,96 @@ class TestDiscoverAndRunCheckers:
         captured = capsys.readouterr()
         assert "예상치 못한 오류" in captured.out or "예상치 못한 오류" in str(captured)
 
+    def test_checker_order_respected(self, mocker):
+        """Checkers in CHECKER_ORDER run in that order regardless of discovery order."""
+        call_order = []
+
+        def make_mock_info(name):
+            m = mocker.MagicMock()
+            m.name = name
+            return m
+
+        # iter_modules returns them in reverse CHECKER_ORDER to make the test meaningful
+        mocker.patch(
+            "pkgutil.iter_modules",
+            return_value=[
+                make_mock_info("download_reason_checker"),
+                make_mock_info("personal_file_checker"),
+                make_mock_info("login_checker"),
+            ],
+        )
+
+        def make_module(name):
+            mod = mocker.MagicMock()
+
+            def run_check(*_):
+                call_order.append(name)
+                return 1
+
+            mod.run_check = run_check
+            return mod
+
+        modules = {
+            ".download_reason_checker": make_module("download_reason_checker"),
+            ".personal_file_checker": make_module("personal_file_checker"),
+            ".login_checker": make_module("login_checker"),
+        }
+
+        def import_side_effect(name, **_):
+            return modules[name]
+
+        mocker.patch("importlib.import_module", side_effect=import_side_effect)
+
+        main.discover_and_run_checkers("d", "s", "202309")
+
+        assert call_order == [
+            "login_checker",
+            "personal_file_checker",
+            "download_reason_checker",
+        ]
+
+    def test_unknown_checker_runs_after_ordered_ones(self, mocker):
+        """A checker not in CHECKER_ORDER runs after the known ones, alphabetically."""
+        call_order = []
+
+        def make_mock_info(name):
+            m = mocker.MagicMock()
+            m.name = name
+            return m
+
+        mocker.patch(
+            "pkgutil.iter_modules",
+            return_value=[
+                make_mock_info("zzz_checker"),
+                make_mock_info("login_checker"),
+            ],
+        )
+
+        def make_module(name):
+            mod = mocker.MagicMock()
+
+            def run_check(*_):
+                call_order.append(name)
+                return 1
+
+            mod.run_check = run_check
+            return mod
+
+        modules = {
+            ".zzz_checker": make_module("zzz_checker"),
+            ".login_checker": make_module("login_checker"),
+        }
+
+        def import_side_effect(name, **_):
+            return modules[name]
+
+        mocker.patch("importlib.import_module", side_effect=import_side_effect)
+
+        main.discover_and_run_checkers("d", "s", "202309")
+
+        assert call_order[0] == "login_checker"
+        assert call_order[1] == "zzz_checker"
+
 
 class TestMain:
     """Tests for main() function."""
@@ -161,6 +251,7 @@ class TestMain:
         mock_print_error.assert_called_once()
         call_args = mock_print_error.call_args[0][0]
         assert "압축 작업 중 오류" in call_args
+
 
 class TestHwpxIntegration:
     """Tests for HWPX report generation integration in _run_inspection."""

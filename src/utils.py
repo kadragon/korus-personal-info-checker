@@ -273,6 +273,29 @@ def _merge_and_preprocess_files(
     return merged_df
 
 
+_ACCESS_LOG_CACHE: dict[tuple[str, str], pd.DataFrame] = {}
+
+
+def load_access_logs_cached(download_dir: str, file_prefix: str) -> pd.DataFrame | None:
+    """Load and merge access log files; cache by (download_dir, file_prefix)."""
+    key = (download_dir, file_prefix)
+    if key in _ACCESS_LOG_CACHE:
+        return _ACCESS_LOG_CACHE[key].copy()
+    excel_files = _find_excel_files(download_dir, file_prefix)
+    if not excel_files:
+        return None
+    merged = _merge_and_preprocess_files(excel_files, download_dir)
+    if merged is None:
+        return None
+    _ACCESS_LOG_CACHE[key] = merged
+    return merged.copy()
+
+
+def clear_access_log_cache() -> None:
+    """Clear the in-memory access log cache. Intended for test isolation."""
+    _ACCESS_LOG_CACHE.clear()
+
+
 def find_and_prepare_excel_file(
     download_dir: str,
     file_prefix: str,
@@ -284,24 +307,19 @@ def find_and_prepare_excel_file(
     Finds, merges, preprocesses, and saves Excel files from the specified folder.
 
     This function performs the following:
-    1. Uses `_find_excel_files` to find relevant files.
-    2. Uses `_merge_and_preprocess_files` to merge and preprocess the files.
-    3. Saves the merged DataFrame as an intermediate result.
+    1. Uses `load_access_logs_cached` to find, merge, and cache relevant files.
+    2. Saves the merged DataFrame as an intermediate result.
     """
     try:
-        excel_files = _find_excel_files(download_dir, file_prefix)
-        if not excel_files:
-            print_info(
-                f"'{file_prefix}'로 시작하는 파일을 찾을 수 없습니다. "
-                f"이 검사는 건너뜁니다."
-            )
-            return None, None
+        merged_df = load_access_logs_cached(download_dir, file_prefix)
     except EnvironmentError as e:
         print_error(str(e))
         return None, None
 
-    merged_df = _merge_and_preprocess_files(excel_files, download_dir)
     if merged_df is None:
+        print_info(
+            f"'{file_prefix}'로 시작하는 파일을 찾을 수 없습니다. 이 검사는 건너뜁니다."
+        )
         return None, None
 
     print_info(f"{output_file_basename} 원본 데이터: {len(merged_df)}건")

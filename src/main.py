@@ -44,18 +44,32 @@ download_dir = os.getenv("DOWNLOAD_DIR")  # 원본 Excel 파일이 있는 디렉
 base_save_dir = os.getenv("SAVE_DIR")  # 출력 보고서가 저장될 기본 디렉토리입니다.
 
 
+CHECKER_ORDER = (
+    "login_checker",
+    "personal_file_checker",
+    "download_reason_checker",
+    "ncmarm001_checker",
+)
+
+
 def discover_and_run_checkers(
     download_dir: str, reports_save_dir: str, prev_month_str: str
 ) -> int:
     """
     Dynamically discovers and runs all checker modules within the `checkers` package.
+    Modules in CHECKER_ORDER run first (in that order);
+    remaining modules follow alphabetically.
     """
-    total_count = 0
-    for module_info in pkgutil.iter_modules(checkers.__path__):
-        module_name = module_info.name
-        if not module_name.endswith("_checker"):
-            continue
+    discovered = [
+        info.name
+        for info in pkgutil.iter_modules(checkers.__path__)
+        if info.name.endswith("_checker")
+    ]
+    ordered = [n for n in CHECKER_ORDER if n in discovered]
+    ordered += sorted(n for n in discovered if n not in CHECKER_ORDER)
 
+    total_count = 0
+    for module_name in ordered:
         try:
             module: ModuleType = importlib.import_module(
                 f".{module_name}", package=checkers.__name__

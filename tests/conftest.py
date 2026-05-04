@@ -4,6 +4,15 @@ from datetime import datetime
 import pandas as pd
 import pytest
 
+from src.utils import clear_access_log_cache
+
+
+@pytest.fixture(autouse=True)
+def _reset_access_log_cache():
+    clear_access_log_cache()
+    yield
+    clear_access_log_cache()
+
 
 @pytest.fixture
 def temp_dir():
@@ -56,5 +65,16 @@ def sample_download_df():
             datetime(2023, 9, 1, 10, 0),
             datetime(2023, 9, 1, 11, 0),
         ],
+    }
+    return pd.DataFrame(data)
+
+
+@pytest.fixture
+def sample_ncmarm001_df():
+    """Sample DataFrame for NCMARM001 permission grant records."""
+    data = {
+        "등록자신분번호": ["10001234", "10005678", "10009999"],
+        "권한명": ["권한A", "권한B", "권한C"],
+        "등록일시": ["2024-03-01", "2024-03-02", "2024-03-03"],
     }
     return pd.DataFrame(data)

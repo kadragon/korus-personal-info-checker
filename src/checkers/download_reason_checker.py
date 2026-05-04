@@ -22,10 +22,9 @@ import pandas as pd
 from .. import config as cfg
 from ..display import print_checker_header, print_info
 from ..utils import (
-    _find_excel_files,
-    _merge_and_preprocess_files,
     filter_by_time_conditions,
     find_and_prepare_excel_file,
+    load_access_logs_cached,
     run_and_save_check,
     save_excel_with_autofit,
 )
@@ -132,19 +131,16 @@ def _normalize_employee_id(s: pd.Series) -> pd.Series:
 
 def _load_access_logs(download_dir: str) -> pd.DataFrame | None:
     """Load and merge access log files from the download directory."""
-    file_prefix = cfg.PERSONAL_INFO_ACCESS_LOG_PREFIX
+    file_prefix = (
+        f"{cfg.PERSONAL_INFO_ACCESS_LOG_PREFIX}{datetime.today().strftime('%Y%m')}"
+    )
     try:
-        excel_files = _find_excel_files(download_dir, file_prefix)
+        merged_df = load_access_logs_cached(download_dir, file_prefix)
     except EnvironmentError as e:
         print_info(f"접속기록 파일 검색 중 오류 발생: {e}")
         return None
 
-    if not excel_files:
-        return None
-
-    merged_df = _merge_and_preprocess_files(excel_files, download_dir)
     if merged_df is None:
-        print_info("접속기록 파일 병합/전처리 실패. 교차 검증을 건너뜁니다.")
         return None
 
     merged_df.drop_duplicates(inplace=True)
