@@ -56,5 +56,10 @@ def _filter_unauthorized_grants(df: pd.DataFrame, allowlist: set[str]) -> pd.Dat
         raise ValueError(
             f"'{cfg.COL_REGISTRANT_ID}' 컬럼을 찾을 수 없어 필터링을 할 수 없습니다."
         )
-    ids = df[cfg.COL_REGISTRANT_ID].astype(str).str.strip()
+    ids = (
+        df[cfg.COL_REGISTRANT_ID]
+        .astype(str)
+        .str.replace(r"\.0$", "", regex=True)
+        .str.strip()
+    )
     return df[~ids.isin(allowlist)].copy()

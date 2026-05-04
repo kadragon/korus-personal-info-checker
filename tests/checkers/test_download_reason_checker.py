@@ -550,9 +550,10 @@ class TestLoadAccessLogs:
             "src.checkers.download_reason_checker.load_access_logs_cached",
             return_value=None,
         )
-        mocker.patch("src.checkers.download_reason_checker.print_info")
+        mock_info = mocker.patch("src.checkers.download_reason_checker.print_info")
         result = drc._load_access_logs(temp_dir)
         assert result is None
+        assert any("처리할 수 없습니다" in str(c) for c in mock_info.call_args_list)
 
     def test_happy_path_returns_deduplicated_df(self, temp_dir, mocker):
         raw_df = pd.DataFrame(

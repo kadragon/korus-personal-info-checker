@@ -311,15 +311,20 @@ def find_and_prepare_excel_file(
     2. Saves the merged DataFrame as an intermediate result.
     """
     try:
-        merged_df = load_access_logs_cached(download_dir, file_prefix)
+        excel_files = _find_excel_files(download_dir, file_prefix)
     except EnvironmentError as e:
         print_error(str(e))
         return None, None
 
-    if merged_df is None:
+    if not excel_files:
         print_info(
             f"'{file_prefix}'로 시작하는 파일을 찾을 수 없습니다. 이 검사는 건너뜁니다."
         )
+        return None, None
+
+    merged_df = load_access_logs_cached(download_dir, file_prefix)
+    if merged_df is None:
+        print_info("파일 병합/전처리에 실패했습니다. 이 검사는 건너뜁니다.")
         return None, None
 
     print_info(f"{output_file_basename} 원본 데이터: {len(merged_df)}건")

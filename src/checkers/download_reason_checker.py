@@ -141,6 +141,7 @@ def _load_access_logs(download_dir: str) -> pd.DataFrame | None:
         return None
 
     if merged_df is None:
+        print_info("접속기록 파일을 처리할 수 없습니다. 이 검사는 건너뜁니다.")
         return None
 
     merged_df.drop_duplicates(inplace=True)

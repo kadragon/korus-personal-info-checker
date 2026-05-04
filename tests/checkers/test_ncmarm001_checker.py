@@ -47,6 +47,12 @@ class TestFilterUnauthorizedGrants:
         result = nc._filter_unauthorized_grants(df, set())
         assert len(result) == 2
 
+    def test_normalizes_float_ids_from_excel(self):
+        # Excel reads numeric cols with blanks as float; strip trailing .0.
+        df = pd.DataFrame({cfg.COL_REGISTRANT_ID: [10001234.0, 10005678.0]})
+        result = nc._filter_unauthorized_grants(df, {"10001234"})
+        assert len(result) == 1
+
 
 class TestRunCheck:
     def test_returns_0_when_no_data(self, temp_dir, monkeypatch, mocker):
