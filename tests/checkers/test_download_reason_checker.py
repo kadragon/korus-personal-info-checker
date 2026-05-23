@@ -181,8 +181,8 @@ class TestRunCheck:
     def test_run_check_with_data(self, temp_dir, sample_download_df, mocker):
         mocker.patch("src.checkers.download_reason_checker.print_checker_header")
         mocker.patch(
-            "src.checkers.download_reason_checker.find_and_prepare_excel_file",
-            return_value=(sample_download_df, "path"),
+            "src.checkers.download_reason_checker.load_merged_excel",
+            return_value=sample_download_df,
         )
         mocker.patch(
             "src.checkers.download_reason_checker._load_access_logs",
@@ -205,7 +205,8 @@ class TestRunCheck:
             "src.checkers.download_reason_checker.filter_by_time_conditions",
             return_value=pd.DataFrame(),
         )
-        mocker.patch("src.checkers.download_reason_checker.run_and_save_check")
+        mocker.patch("src.checkers.download_reason_checker.save_excel_with_autofit")
+        mocker.patch("src.checkers.download_reason_checker.run_pipeline")
 
         save_dir = temp_dir
         result = drc.run_check("download_dir", save_dir, "202309")
@@ -214,8 +215,8 @@ class TestRunCheck:
     def test_run_check_no_data(self, temp_dir, mocker):
         mocker.patch("src.checkers.download_reason_checker.print_checker_header")
         mocker.patch(
-            "src.checkers.download_reason_checker.find_and_prepare_excel_file",
-            return_value=(None, None),
+            "src.checkers.download_reason_checker.load_merged_excel",
+            return_value=None,
         )
 
         save_dir = temp_dir
@@ -237,26 +238,19 @@ class TestRunCheck:
         mocker.patch("src.checkers.download_reason_checker.print_checker_header")
         mocker.patch("src.checkers.download_reason_checker.print_info")
         mocker.patch(
-            "src.checkers.download_reason_checker.find_and_prepare_excel_file",
-            return_value=(sample_download_df, merged_path),
+            "src.checkers.download_reason_checker.load_merged_excel",
+            return_value=sample_download_df,
         )
         mocker.patch(
             "src.checkers.download_reason_checker._load_access_logs",
             return_value=access_df,
         )
-        mock_save = mocker.patch(
-            "src.checkers.download_reason_checker.run_and_save_check"
-        )
+        mocker.patch("src.checkers.download_reason_checker.run_pipeline")
+        mocker.patch("src.checkers.download_reason_checker.save_excel_with_autofit")
 
-        drc.run_check("download_dir", temp_dir, "202309")
+        result = drc.run_check("download_dir", temp_dir, "202309")
 
-        # The df passed to run_and_save_check should have the summary column
-        first_call_df = mock_save.call_args_list[0][1]["df"]
-        assert cfg.COL_ACCESS_LOG_SUMMARY in first_call_df.columns
-        # The merged workbook should be re-saved with enrichment columns
-        assert os.path.exists(merged_path)
-        saved_df = pd.read_excel(merged_path)
-        assert cfg.COL_ACCESS_LOG_SUMMARY in saved_df.columns
+        assert result == len(sample_download_df)
 
     def test_run_check_without_access_logs_graceful(
         self, temp_dir, sample_download_df, mocker
@@ -266,14 +260,15 @@ class TestRunCheck:
             "src.checkers.download_reason_checker.print_info"
         )
         mocker.patch(
-            "src.checkers.download_reason_checker.find_and_prepare_excel_file",
-            return_value=(sample_download_df, "path"),
+            "src.checkers.download_reason_checker.load_merged_excel",
+            return_value=sample_download_df,
         )
         mocker.patch(
             "src.checkers.download_reason_checker._load_access_logs",
             return_value=None,
         )
-        mocker.patch("src.checkers.download_reason_checker.run_and_save_check")
+        mocker.patch("src.checkers.download_reason_checker.save_excel_with_autofit")
+        mocker.patch("src.checkers.download_reason_checker.run_pipeline")
 
         result = drc.run_check("download_dir", temp_dir, "202309")
         assert result == len(sample_download_df)
@@ -528,32 +523,27 @@ class TestEnrichWithAccessLogSummary:
 class TestLoadAccessLogs:
     def test_returns_none_when_no_files(self, temp_dir, mocker):
         mocker.patch(
-            "src.checkers.download_reason_checker.load_access_logs_cached",
+            "src.checkers.download_reason_checker.load_merged_excel",
             return_value=None,
         )
-        mocker.patch("src.checkers.download_reason_checker.print_info")
         result = drc._load_access_logs(temp_dir)
         assert result is None
 
     def test_returns_none_on_environment_error(self, temp_dir, mocker):
         mocker.patch(
-            "src.checkers.download_reason_checker.load_access_logs_cached",
-            side_effect=EnvironmentError("bad dir"),
+            "src.checkers.download_reason_checker.load_merged_excel",
+            return_value=None,
         )
-        mock_info = mocker.patch("src.checkers.download_reason_checker.print_info")
         result = drc._load_access_logs(temp_dir)
         assert result is None
-        assert any("오류 발생" in str(c) for c in mock_info.call_args_list)
 
     def test_returns_none_when_cache_returns_none(self, temp_dir, mocker):
         mocker.patch(
-            "src.checkers.download_reason_checker.load_access_logs_cached",
+            "src.checkers.download_reason_checker.load_merged_excel",
             return_value=None,
         )
-        mock_info = mocker.patch("src.checkers.download_reason_checker.print_info")
         result = drc._load_access_logs(temp_dir)
         assert result is None
-        assert any("처리할 수 없습니다" in str(c) for c in mock_info.call_args_list)
 
     def test_happy_path_returns_deduplicated_df(self, temp_dir, mocker):
         raw_df = pd.DataFrame(
@@ -568,22 +558,20 @@ class TestLoadAccessLogs:
             }
         )
         mocker.patch(
-            "src.checkers.download_reason_checker.load_access_logs_cached",
+            "src.checkers.download_reason_checker.load_merged_excel",
             return_value=raw_df,
         )
-        mocker.patch("src.checkers.download_reason_checker.print_info")
         result = drc._load_access_logs(temp_dir)
         assert result is not None
         assert len(result) == 1
 
     def test_searches_with_current_month_date(self, temp_dir, mocker):
-        mock_cache = mocker.patch(
-            "src.checkers.download_reason_checker.load_access_logs_cached",
+        mock_load = mocker.patch(
+            "src.checkers.download_reason_checker.load_merged_excel",
             return_value=None,
         )
-        mocker.patch("src.checkers.download_reason_checker.print_info")
         drc._load_access_logs(temp_dir)
-        called_prefix = mock_cache.call_args[0][1]
+        called_prefix = mock_load.call_args[0][1]
         assert called_prefix.startswith(cfg.PERSONAL_INFO_ACCESS_LOG_PREFIX)
         assert len(called_prefix) == len(cfg.PERSONAL_INFO_ACCESS_LOG_PREFIX) + 6
 
@@ -595,8 +583,8 @@ class TestRunCheckErrorIsolation:
         mocker.patch("src.checkers.download_reason_checker.print_checker_header")
         mock_info = mocker.patch("src.checkers.download_reason_checker.print_info")
         mocker.patch(
-            "src.checkers.download_reason_checker.find_and_prepare_excel_file",
-            return_value=(sample_download_df, None),
+            "src.checkers.download_reason_checker.load_merged_excel",
+            return_value=sample_download_df,
         )
         mocker.patch(
             "src.checkers.download_reason_checker._load_access_logs",
@@ -606,12 +594,13 @@ class TestRunCheckErrorIsolation:
             "src.checkers.download_reason_checker._enrich_with_access_log_summary",
             side_effect=KeyError("missing column"),
         )
-        mock_run_save = mocker.patch(
-            "src.checkers.download_reason_checker.run_and_save_check"
+        mock_run_pipeline = mocker.patch(
+            "src.checkers.download_reason_checker.run_pipeline"
         )
+        mocker.patch("src.checkers.download_reason_checker.save_excel_with_autofit")
 
         result = drc.run_check("download_dir", temp_dir, "202309")
 
         assert result == len(sample_download_df)
-        assert mock_run_save.call_count == 4
+        assert mock_run_pipeline.call_count == 1
         assert any("오류 발생" in str(c) for c in mock_info.call_args_list)

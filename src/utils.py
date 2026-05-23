@@ -9,6 +9,7 @@ import os
 import unicodedata
 import zipfile
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime
 
 import holidays
@@ -296,6 +297,23 @@ def clear_access_log_cache() -> None:
     _ACCESS_LOG_CACHE.clear()
 
 
+def load_merged_excel(download_dir: str, file_prefix: str) -> pd.DataFrame | None:
+    """Find and merge Excel files with the given prefix. No side effects.
+
+    Returns None if no matching files are found or if any file fails to load.
+    """
+    try:
+        excel_files = _find_excel_files(download_dir, file_prefix)
+    except EnvironmentError as e:
+        print_info(str(e))
+        return None
+
+    if not excel_files:
+        return None
+
+    return _merge_and_preprocess_files(excel_files, download_dir)
+
+
 def find_and_prepare_excel_file(
     download_dir: str,
     file_prefix: str,
@@ -454,3 +472,30 @@ def run_and_save_check(
         )
     else:
         print_result(is_detected=False, description=result_description)
+
+
+Filter = Callable[[pd.DataFrame], pd.DataFrame]
+
+
+@dataclass
+class CheckSpec:
+    """Typed specification for a single filter check in a checker pipeline."""
+
+    filter_fn: Filter
+    suffix: str
+    description: str
+
+
+def run_pipeline(
+    df: pd.DataFrame,
+    checks: list[CheckSpec],
+    report_base: str,
+    save_dir: str,
+    prev_month: str,
+) -> None:
+    """Run each CheckSpec against df and save non-empty results to save_dir."""
+    for spec in checks:
+        save_path = os.path.join(
+            save_dir, f"{report_base}({spec.suffix})_{prev_month}.xlsx"
+        )
+        run_and_save_check(df, spec.filter_fn, save_path, spec.description)
