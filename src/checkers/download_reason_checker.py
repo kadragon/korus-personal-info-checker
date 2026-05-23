@@ -12,20 +12,21 @@ saves the filtered results to separate Excel files.
 
 import os
 import re
-from collections.abc import Callable
 from datetime import datetime
+from functools import partial
 from typing import Any, cast
 
 import numpy as np
 import pandas as pd
 
 from .. import config as cfg
+from ..config import DownloadConfig
 from ..display import print_checker_header, print_info
 from ..utils import (
+    CheckSpec,
     filter_by_time_conditions,
-    find_and_prepare_excel_file,
-    load_access_logs_cached,
-    run_and_save_check,
+    load_merged_excel,
+    run_pipeline,
     save_excel_with_autofit,
 )
 
@@ -134,14 +135,8 @@ def _load_access_logs(download_dir: str) -> pd.DataFrame | None:
     file_prefix = (
         f"{cfg.PERSONAL_INFO_ACCESS_LOG_PREFIX}{datetime.today().strftime('%Y%m')}"
     )
-    try:
-        merged_df = load_access_logs_cached(download_dir, file_prefix)
-    except EnvironmentError as e:
-        print_info(f"접속기록 파일 검색 중 오류 발생: {e}")
-        return None
-
+    merged_df = load_merged_excel(download_dir, file_prefix)
     if merged_df is None:
-        print_info("접속기록 파일을 처리할 수 없습니다. 이 검사는 건너뜁니다.")
         return None
 
     merged_df.drop_duplicates(inplace=True)
@@ -162,8 +157,11 @@ def _enrich_with_access_log_summary(
     download_df: pd.DataFrame,
     access_log_df: pd.DataFrame,
     window_minutes: int,
+    config: DownloadConfig | None = None,
 ) -> pd.DataFrame:
     """Enrich download records with access log summary within ±window_minutes."""
+    if config is None:
+        config = DownloadConfig()
     result = download_df.copy()
     result[cfg.COL_ACCESS_LOG_SUMMARY] = ""
 
@@ -181,7 +179,7 @@ def _enrich_with_access_log_summary(
     )
     result[cfg.COL_EMPLOYEE_ID] = _normalize_employee_id(result[cfg.COL_EMPLOYEE_ID])
 
-    window_steps = cfg.CROSS_REF_WINDOW_STEPS
+    window_steps = config.cross_ref_window_steps
 
     # Pre-group: sorted timestamps + labels as numpy arrays per employee
     grouped: dict[str, tuple[Any, Any]] = {}
@@ -274,29 +272,30 @@ def run_check(download_dir: str, save_dir: str, prev_month: str) -> int:
     """
     print_checker_header(cfg.DOWNLOAD_REASON_REPORT_BASE)
 
+    config = DownloadConfig()
     file_prefix = (
         f"{cfg.PERSONAL_INFO_DOWNLOAD_REASON_PREFIX}{datetime.today().strftime('%Y%m')}"
     )
 
-    df, merged_save_path = find_and_prepare_excel_file(
-        download_dir,
-        file_prefix,
-        save_dir,
-        cfg.DOWNLOAD_REASON_REPORT_BASE,
-        prev_month,
-    )
-
+    df = load_merged_excel(download_dir, file_prefix)
     if df is None:
+        print_info(
+            f"'{file_prefix}'로 시작하는 파일을 찾을 수 없습니다. 이 검사는 건너뜁니다."
+        )
         return 0
+
+    print_info(f"{cfg.DOWNLOAD_REASON_REPORT_BASE} 원본 데이터: {len(df)}건")
+    os.makedirs(save_dir, exist_ok=True)
+    merged_path = os.path.join(
+        save_dir, f"{cfg.DOWNLOAD_REASON_REPORT_BASE}_{prev_month}.xlsx"
+    )
 
     access_log_df = _load_access_logs(download_dir)
     if access_log_df is not None:
         try:
             df = _enrich_with_access_log_summary(
-                df, access_log_df, cfg.CROSS_REF_TIME_WINDOW_MINUTES
+                df, access_log_df, cfg.CROSS_REF_TIME_WINDOW_MINUTES, config
             )
-            if merged_save_path is not None:
-                save_excel_with_autofit(df, merged_save_path)
         except Exception as e:
             print_info(
                 f"접속기록 교차 검증 중 오류 발생: {e}. 교차 검증 없이 진행합니다."
@@ -304,54 +303,45 @@ def run_check(download_dir: str, save_dir: str, prev_month: str) -> int:
     else:
         print_info("접속기록 파일을 찾을 수 없어 교차 검증을 건너뜁니다.")
 
-    checks_to_run: list[dict[str, Callable[[pd.DataFrame], pd.DataFrame] | str]] = [
-        {
-            "function": _check_download_sayu,
-            "suffix": cfg.DOWNLOAD_REASON_INVALID_REASON_SUFFIX,
-            "description": "다운로드 사유 비정상",
-        },
-        {
-            "function": _filter_high_download_users,
-            "suffix": cfg.DOWNLOAD_REASON_HIGH_DOWNLOAD_COUNT_SUFFIX,
-            "description": f"다운로드 {cfg.DOWNLOAD_COUNT_THRESHOLD}건 초과",
-        },
-        {
-            "function": _filter_high_freq_download,
-            "suffix": cfg.DOWNLOAD_REASON_HIGH_FREQUENCY_SUFFIX,
-            "description": (
-                f"1시간 내 {cfg.DOWNLOAD_FREQUENCY_THRESHOLD}건 이상 다운로드"
-            ),
-        },
-        {
-            "function": lambda df: filter_by_time_conditions(
-                df,
-                time_col=cfg.COL_ACCESS_TIME,
-                employee_id_col=cfg.COL_EMPLOYEE_ID,
-                check_off_hours=True,
-                check_holidays_weekends=True,
-                off_hours_start=cfg.DOWNLOAD_OFF_HOURS_START,
-                off_hours_end=cfg.DOWNLOAD_OFF_HOURS_END,
-            ),
-            "suffix": cfg.DOWNLOAD_REASON_OFF_HOURS_SUFFIX,
-            "description": "업무 시간 외/휴일 다운로드",
-        },
+    save_excel_with_autofit(df, merged_path)
+    print_info(
+        f"모든 파일을 합쳐 '{os.path.basename(merged_path)}'(으)로 저장했습니다."
+    )
+
+    _off_hours_holiday = partial(
+        filter_by_time_conditions,
+        time_col=cfg.COL_ACCESS_TIME,
+        employee_id_col=cfg.COL_EMPLOYEE_ID,
+        check_off_hours=True,
+        check_holidays_weekends=True,
+        off_hours_start=config.off_hours_start,
+        off_hours_end=config.off_hours_end,
+    )
+
+    checks = [
+        CheckSpec(
+            filter_fn=_check_download_sayu,
+            suffix=cfg.DOWNLOAD_REASON_INVALID_REASON_SUFFIX,
+            description="다운로드 사유 비정상",
+        ),
+        CheckSpec(
+            filter_fn=partial(_filter_high_download_users, config=config),
+            suffix=cfg.DOWNLOAD_REASON_HIGH_DOWNLOAD_COUNT_SUFFIX,
+            description=f"다운로드 {config.count_threshold}건 초과",
+        ),
+        CheckSpec(
+            filter_fn=partial(_filter_high_freq_download, config=config),
+            suffix=cfg.DOWNLOAD_REASON_HIGH_FREQUENCY_SUFFIX,
+            description=f"1시간 내 {config.frequency_threshold}건 이상 다운로드",
+        ),
+        CheckSpec(
+            filter_fn=_off_hours_holiday,
+            suffix=cfg.DOWNLOAD_REASON_OFF_HOURS_SUFFIX,
+            description="업무 시간 외/휴일 다운로드",
+        ),
     ]
 
-    for check in checks_to_run:
-        save_path = os.path.join(
-            save_dir,
-            f"{cfg.DOWNLOAD_REASON_REPORT_BASE}({check['suffix']})_{prev_month}.xlsx",
-        )
-        check_func = check["function"]
-        if not callable(check_func):
-            # Skip non-callable entries (should not happen with current structure)
-            continue
-        run_and_save_check(
-            df=df,
-            check_func=check_func,
-            save_path=save_path,
-            result_description=str(check["description"]),
-        )
+    run_pipeline(df, checks, cfg.DOWNLOAD_REASON_REPORT_BASE, save_dir, prev_month)
 
     return len(df)
 
@@ -385,7 +375,10 @@ def _check_download_sayu(df: pd.DataFrame) -> pd.DataFrame:
     return filtered_df.sort_values([cfg.COL_EMPLOYEE_ID, cfg.COL_ACCESS_TIME])
 
 
-def _filter_high_download_users(df: pd.DataFrame) -> pd.DataFrame:
+def _filter_high_download_users(
+    df: pd.DataFrame,
+    config: DownloadConfig | None = None,
+) -> pd.DataFrame:
     """
     Filters users whose total download record count exceeds the defined threshold.
 
@@ -394,6 +387,7 @@ def _filter_high_download_users(df: pd.DataFrame) -> pd.DataFrame:
                            `COL_DOWNLOAD_COUNT` (number of downloaded records),
                            `COL_EMPLOYEE_ID` (employee ID),
                            `COL_ACCESS_TIME` (access timestamp).
+        config: DownloadConfig with numeric thresholds. Defaults to DownloadConfig().
 
     Returns:
         pd.DataFrame: DataFrame containing all download records of users
@@ -403,25 +397,28 @@ def _filter_high_download_users(df: pd.DataFrame) -> pd.DataFrame:
     Raises:
         ValueError: If the `COL_DOWNLOAD_COUNT` column is missing.
     """
+    if config is None:
+        config = DownloadConfig()
+
     if cfg.COL_DOWNLOAD_COUNT not in df.columns:
         raise ValueError(f"'{cfg.COL_DOWNLOAD_COUNT}' 컬럼을 찾을 수 없습니다.")
 
-    # 직원 ID별로 그룹화하고 다운로드 수를 합산합니다.
     download_sum_per_user = df.groupby(cfg.COL_EMPLOYEE_ID)[
         cfg.COL_DOWNLOAD_COUNT
     ].sum()
-    # 다운로드 수 임계값을 충족하거나 초과하는 사용자를 식별합니다.
     target_users = download_sum_per_user[
-        download_sum_per_user >= cfg.DOWNLOAD_COUNT_THRESHOLD
+        download_sum_per_user >= config.count_threshold
     ].index
 
-    # 식별된 사용자의 모든 기록을 반환합니다.
     return df[df[cfg.COL_EMPLOYEE_ID].isin(target_users)].sort_values(
         [cfg.COL_EMPLOYEE_ID, cfg.COL_ACCESS_TIME]
     )
 
 
-def _filter_high_freq_download(df: pd.DataFrame) -> pd.DataFrame:
+def _filter_high_freq_download(
+    df: pd.DataFrame,
+    config: DownloadConfig | None = None,
+) -> pd.DataFrame:
     """
     Filters users who downloaded data at high frequency (threshold or more
     times within one hour).
@@ -430,6 +427,7 @@ def _filter_high_freq_download(df: pd.DataFrame) -> pd.DataFrame:
         df (pd.DataFrame): DataFrame containing download records. Expected columns:
                            `COL_ACCESS_TIME` (access timestamp),
                            `COL_EMPLOYEE_ID` (employee ID).
+        config: DownloadConfig with numeric thresholds. Defaults to DownloadConfig().
 
     Returns:
         pd.DataFrame: DataFrame containing records corresponding to
@@ -443,40 +441,32 @@ def _filter_high_freq_download(df: pd.DataFrame) -> pd.DataFrame:
     if df is None:
         raise ValueError("Input DataFrame cannot be None.")
 
+    if config is None:
+        config = DownloadConfig()
+
     df_copy = df.copy()
 
-    flagged_indices = (
-        set()
-    )  # 높은 빈도의 다운로드 폭주에 속하는 기록의 원본 인덱스를 저장합니다.
+    flagged_indices: set[int] = set()
 
-    # 직원 ID별로 그룹화하여 각 사용자의 다운로드 패턴을 분석합니다.
     for _, group in df_copy.groupby(cfg.COL_EMPLOYEE_ID):
-        # 정수 인덱스 i와 함께 .loc를 사용하기 위해 인덱스를 재설정합니다.
         group = group.sort_values(cfg.COL_ACCESS_TIME).reset_index()
 
         for i in range(len(group)):
             current_download_time = cast(
                 pd.Timestamp, group.loc[i, cfg.COL_ACCESS_TIME]
             )
-            # 현재 다운로드 시간으로부터 1시간 창을 정의합니다.
             window_end_time = current_download_time + pd.Timedelta(hours=1)
 
-            # 이 1시간 창 내의 다운로드를 선택합니다.
             downloads_in_window = group[
                 (group[cfg.COL_ACCESS_TIME] >= current_download_time)
                 & (group[cfg.COL_ACCESS_TIME] <= window_end_time)
             ]
 
-            # 이 창 내의 다운로드 수가 빈도 임계값을 충족하면 플래그를 지정합니다.
-            if len(downloads_in_window) >= cfg.DOWNLOAD_FREQUENCY_THRESHOLD:
-                flagged_indices.update(
-                    downloads_in_window["index"].tolist()
-                )  # reset_index() 후 저장된 원본 인덱스를 사용합니다.
+            if len(downloads_in_window) >= config.frequency_threshold:
+                flagged_indices.update(downloads_in_window["index"].tolist())
 
     if flagged_indices:
-        result_df = df_copy.loc[
-            sorted(flagged_indices)
-        ]  # 원본 인덱스를 사용하여 선택합니다.
+        result_df = df_copy.loc[sorted(flagged_indices)]
         return result_df.sort_values([cfg.COL_EMPLOYEE_ID, cfg.COL_ACCESS_TIME])
     else:
-        return pd.DataFrame(columns=df.columns)  # 동일한 열을 가진 빈 DataFrame 반환
+        return pd.DataFrame(columns=df.columns)

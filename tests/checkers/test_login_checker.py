@@ -462,8 +462,8 @@ class TestRunCheck:
     def test_run_check_with_data(self, temp_dir, sample_login_df, mocker):
         mocker.patch("src.checkers.login_checker.print_checker_header")
         mocker.patch(
-            "src.checkers.login_checker.find_and_prepare_excel_file",
-            return_value=(sample_login_df, "path"),
+            "src.checkers.login_checker.load_merged_excel",
+            return_value=sample_login_df,
         )
         mocker.patch(
             "src.checkers.login_checker._filter_ip_switch", return_value=pd.DataFrame()
@@ -472,7 +472,9 @@ class TestRunCheck:
             "src.checkers.login_checker.filter_by_time_conditions",
             return_value=pd.DataFrame(),
         )
-        mocker.patch("src.checkers.login_checker.run_and_save_check")
+        mocker.patch("src.checkers.login_checker.save_excel_with_autofit")
+        mocker.patch("src.checkers.login_checker.print_info")
+        mocker.patch("src.checkers.login_checker.run_pipeline")
 
         save_dir = temp_dir
         result = lc.run_check("download_dir", save_dir, "202309")
@@ -481,9 +483,10 @@ class TestRunCheck:
     def test_run_check_no_data(self, temp_dir, mocker):
         mocker.patch("src.checkers.login_checker.print_checker_header")
         mocker.patch(
-            "src.checkers.login_checker.find_and_prepare_excel_file",
-            return_value=(None, None),
+            "src.checkers.login_checker.load_merged_excel",
+            return_value=None,
         )
+        mocker.patch("src.checkers.login_checker.print_info")
 
         save_dir = temp_dir
         result = lc.run_check("download_dir", save_dir, "202309")
@@ -492,9 +495,11 @@ class TestRunCheck:
     def test_run_check_missing_ip_column(self, temp_dir, sample_login_df, mocker):
         mocker.patch("src.checkers.login_checker.print_checker_header")
         mocker.patch(
-            "src.checkers.login_checker.find_and_prepare_excel_file",
-            return_value=(sample_login_df.drop(columns=["IP"]), "path"),
+            "src.checkers.login_checker.load_merged_excel",
+            return_value=sample_login_df.drop(columns=["IP"]),
         )
+        mocker.patch("src.checkers.login_checker.save_excel_with_autofit")
+        mocker.patch("src.checkers.login_checker.print_info")
 
         save_dir = temp_dir
         with pytest.raises(ValueError):

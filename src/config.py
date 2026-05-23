@@ -2,6 +2,8 @@
 Centralizes all configuration constants for this project.
 """
 
+from dataclasses import dataclass, field
+
 # --- 일반 설정 ---
 COL_ACCESS_TIME = "접속일시"
 COL_ALT_ACCESS_TIME_1 = "접근일시"
@@ -88,3 +90,27 @@ ZIP_FILE_PREFIXES = [
 
 # --- HWPX 보고서 생성 (report_generator.py) ---
 HWPX_REPORT_BASE = "[붙임1] 코러스 개인정보처리시스템 접속기록 점검 대장"
+
+
+@dataclass
+class LoginConfig:
+    """Numeric thresholds for login_checker. Inject instead of monkey-patching."""
+
+    ip_switch_window_hours: int = LOGIN_IP_SWITCH_WINDOW_HOURS
+    ip_switch_min_ips: int = LOGIN_IP_SWITCH_MIN_IPS
+    ip_fast_switch_minutes: int = LOGIN_IP_FAST_SWITCH_MINUTES
+    off_hours_start: int = LOGIN_OFF_HOURS_START
+    off_hours_end: int = LOGIN_OFF_HOURS_END
+
+
+@dataclass
+class DownloadConfig:
+    """Numeric thresholds for download_reason_checker. Inject instead of patching."""
+
+    count_threshold: int = DOWNLOAD_COUNT_THRESHOLD
+    frequency_threshold: int = DOWNLOAD_FREQUENCY_THRESHOLD
+    cross_ref_window_steps: list[int] = field(
+        default_factory=lambda: list(CROSS_REF_WINDOW_STEPS)
+    )
+    off_hours_start: int = DOWNLOAD_OFF_HOURS_START
+    off_hours_end: int = DOWNLOAD_OFF_HOURS_END
