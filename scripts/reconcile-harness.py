@@ -130,9 +130,9 @@ def main() -> None:
 
         if status == "done":
             summary = sprint_summary(tasks_content)
+            append_changelog(title, summary)
             updated = remove_active_marker(backlog, title)
             BACKLOG.write_text(updated, encoding="utf-8")
-            append_changelog(title, summary)
             TASKS.unlink()
             print(f"Sprint '{title}' done. tasks.md removed.")
 

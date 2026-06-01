@@ -26,8 +26,8 @@ echo -e "  Date: $(date '+%Y-%m-%d %H:%M')"
 
 # ── 1. Lint scan ─────────────────────────────────────────────
 echo -e "${CYAN}[1/5] Lint scan...${NC}"
-lint_output=$(uv run ruff check src 2>&1) || true
-if [[ -n "$lint_output" ]]; then
+lint_output=""
+if ! lint_output=$(uv run ruff check src 2>/dev/null); then
     FINDINGS+=("[lint] ruff: $lint_output")
     echo -e "  ${YELLOW}Issues found${NC}"
 else
@@ -40,8 +40,8 @@ $QUICK_MODE && { echo "Quick mode — done."; exit 0; }
 echo -e "${CYAN}[2/5] Doc drift...${NC}"
 recent_py=""
 while IFS= read -r _line; do
-    [[ -n "$_line" && "$_line" == src/*.py ]] && recent_py+="$_line"$'\n'
-done < <(git log --since="24 hours ago" --name-only --pretty=format: 2>/dev/null | grep '^src/checkers/' | sort -u) || true
+    [[ -n "$_line" ]] && recent_py+="$_line"$'\n'
+done < <(git log --since="24 hours ago" --name-only --pretty=format: 2>/dev/null | grep '^src/checkers/.*\.py$' | sort -u) || true
 recent_py="${recent_py%$'\n'}"
 
 if [[ -n "$recent_py" ]]; then
@@ -56,7 +56,7 @@ echo -e "${CYAN}[3/5] Golden principles...${NC}"
 gp_issues=0
 
 # Check GP3: Never log PII — 사용자ID, IP주소, 다운로드사유 must not appear in log() calls
-pii_in_logs=$(grep -rn --include="*.py" -E "log(ger)?\.(debug|info|warning|error|critical).*사용자ID|IP주소|다운로드사유" src/ 2>/dev/null || true)
+pii_in_logs=$(grep -rn --include="*.py" -E "log(ger)?\.(debug|info|warning|error|critical).*(사용자ID|IP주소|다운로드사유)" src/ 2>/dev/null || true)
 if [[ -n "$pii_in_logs" ]]; then
     FINDINGS+=("[gp3-pii] PII column name in log call: $pii_in_logs")
     gp_issues=$((gp_issues + 1))

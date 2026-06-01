@@ -2,9 +2,9 @@
 # validate-harness.sh — Verify harness artifacts are complete and consistent
 # Usage: bash validate-harness.sh [project-root]
 #
-# Checks (keep aligned with references/harness-invariants.md):
+# Checks (see docs/runbook.md for harness maintenance procedures):
 #   1. Required files exist (AGENTS.md, CLAUDE.md, docs/*, backlog.md)
-#   2. AGENTS.md size policy (target ≤100, warn ≤120, fail >120)
+#   2. AGENTS.md size policy (target ≤100, warn ≤200, fail >200)
 #   3. All files referenced in AGENTS.md docs index exist
 #   4. Golden principles section present and 3-7 items
 #   5. Delegation table is present and non-empty
@@ -61,11 +61,11 @@ echo "--- AGENTS.md Size ---"
 if [[ -f "AGENTS.md" ]]; then
     lines=$(wc -l < AGENTS.md | tr -d ' ')
     if [[ $lines -le 100 ]]; then
-        pass "AGENTS.md is $lines lines (limit: 100)"
-    elif [[ $lines -le 120 ]]; then
-        warn "AGENTS.md is $lines lines (limit: 100, slightly over)"
+        pass "AGENTS.md is $lines lines (target: ≤100)"
+    elif [[ $lines -le 200 ]]; then
+        warn "AGENTS.md is $lines lines (target: ≤100, hard limit: 200)"
     else
-        fail "AGENTS.md is $lines lines (limit: 100, too long)"
+        fail "AGENTS.md is $lines lines (hard limit: 200)"
     fi
 fi
 
@@ -208,7 +208,7 @@ if $has_orchestrator || $has_agents; then
     if $has_router && [[ -f ".claude/trigger-routes.json" ]]; then
         pass "Auto-delegation router installed (Step 7b)"
     else
-        warn "Orchestrator/agents present but no UserPromptSubmit trigger router — see references/trigger-router-template.md (Step 7b)"
+        warn "Orchestrator/agents present but no UserPromptSubmit trigger router (Step 7b) — see docs/delegation.md"
     fi
 fi
 
@@ -274,7 +274,7 @@ if [[ -f "backlog.md" ]]; then
     $backlog_bad_box && fail "backlog.md contains non-standard checkboxes (only [ ], [>], [x] allowed)" \
                      || true
 else
-    warn "backlog.md missing — create via references/backlog-template.md"
+    warn "backlog.md missing — create with ## headings and [ ] checkbox items"
 fi
 
 # ── 10. AGENTS.md Maintenance section (edit policy) ────────

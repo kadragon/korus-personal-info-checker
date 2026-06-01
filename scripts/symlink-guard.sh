@@ -32,7 +32,7 @@ fi
 
 # Case 4: missing — create and verify
 if [ ! -e "$LINK" ]; then
-  mkdir -p .claude/skills .agents
+  mkdir -p .agents
   ln -sfn "$TARGET" "$LINK"
   if [ -L "$LINK" ]; then
     echo "Symlink updated: $LINK → $TARGET"
