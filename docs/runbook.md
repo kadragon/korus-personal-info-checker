@@ -34,16 +34,23 @@ CI (`.github/workflows/ci.yml`) runs ruff, mypy, and pytest on every push/PR to 
 
 ## Sweep
 
-**Trigger policy: SessionStart hook with 7-day stamp guard.**
-
-The `.claude/settings.json` SessionStart hook runs `tools/sweep.sh` automatically when `tools/.sweep-stamp` is missing or older than 7 days. This fires once at the start of a session — not on every message.
-
-To run sweep manually at any time:
+**Trigger policy: manual.** Run between features or after any batch of checker changes.
 
 ```bash
-bash tools/sweep.sh         # full sweep
-bash tools/sweep.sh --quick # lint only
+bash scripts/sweep.sh         # full sweep (lint + doc drift + golden principles + harness freshness)
+bash scripts/sweep.sh --quick # lint only
 ```
+
+## Harness Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `scripts/validate-harness.sh` | Full structural validation + maturity level report |
+| `scripts/sweep.sh` | Lint, doc drift, golden principle spot-check |
+| `scripts/reconcile-harness.py` | Sync completed tasks.md items into backlog.md |
+| `scripts/check-context-size.sh` | Warn if AGENTS.md > 200 lines |
+| `scripts/sync-claude-md.sh` | Repair CLAUDE.md → @AGENTS.md (if manually broken) |
+| `scripts/symlink-guard.sh` | Repair .agents/skills symlink (if manually broken) |
 
 ## Common Failure Modes
 
