@@ -24,5 +24,7 @@ status: active
 
 ### PR #109 — harness/pr108-sweep: harness sweep and validation improvements (2026-06-02)
 
-- [ ] [harness] `validate-harness.sh`: Level 3 WARN gate may be too strict
-- [ ] [harness] `validate-harness.sh`: Level 2 not gated on WARN count
+- [x] [harness] `validate-harness.sh`: Level 3 WARN gate too strict —
+  removed; WARNs advisory only
+- [x] [harness] `validate-harness.sh`: Level 2 not WARN-gated —
+  now consistent (neither level WARN-gated)
