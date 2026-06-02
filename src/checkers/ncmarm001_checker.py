@@ -3,7 +3,9 @@ Checks NCMARM001 permission grant logs for unauthorized escalations.
 
 Reads files prefixed NCMARM001_ from download_dir, excludes registrant IDs
 listed in NCMARM001_AUTHORIZED_IDS env var (comma-separated), and saves the
-remaining rows as "승인 없는 권한 상승" to save_dir.
+remaining rows to save_dir. The output filename suffix is the
+NCMARM001_UNAUTHORIZED_GRANT_SUFFIX constant ("승인없는권한상승", no spaces)
+which is used verbatim as a filename token.
 """
 
 import os
