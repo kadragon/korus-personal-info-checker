@@ -46,12 +46,14 @@ def run_check(download_dir: str, save_dir: str, prev_month: str) -> int:
     return len(df)
 
 
-def _load_allowlist() -> set[str]:
+def _load_allowlist() -> frozenset[str]:
     raw = os.getenv("NCMARM001_AUTHORIZED_IDS", "")
-    return {tok.strip() for tok in raw.split(",") if tok.strip()}
+    return frozenset(tok.strip() for tok in raw.split(",") if tok.strip())
 
 
-def _filter_unauthorized_grants(df: pd.DataFrame, allowlist: set[str]) -> pd.DataFrame:
+def _filter_unauthorized_grants(
+    df: pd.DataFrame, allowlist: frozenset[str]
+) -> pd.DataFrame:
     if cfg.COL_REGISTRANT_ID not in df.columns:
         raise ValueError(
             f"'{cfg.COL_REGISTRANT_ID}' 컬럼을 찾을 수 없어 필터링을 할 수 없습니다."
