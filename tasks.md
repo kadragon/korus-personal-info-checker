@@ -6,20 +6,12 @@ status: active
 
 ### PR #99 — Add NCMARM001 unauthorized permission escalation checker (2026-05-04)
 
-- [ ] [debt] `download_reason_checker._load_access_logs`:
-      `drop_duplicates(inplace=True)` applied to cache copy only —
-      first caller deduplicates, subsequent callers receive duplicates
-      (source: Claude Code) — `src/checkers/download_reason_checker.py:146`
-- [ ] [debt] `_load_allowlist` return type: use `frozenset[str]` instead of
-      `set[str]` to signal immutability (source: Claude Code) —
-      `src/checkers/ncmarm001_checker.py:49`
-- [ ] [doc] Module docstring says "승인 없는 권한 상승" (spaces) but config
-      constant `NCMARM001_UNAUTHORIZED_GRANT_SUFFIX` has no spaces —
-      clarify intent in docstring (source: Claude Code) —
-      `src/checkers/ncmarm001_checker.py:6`, `src/config.py:77`
-- [ ] [constraint] No test verifying all names in `CHECKER_ORDER` correspond
-      to existing checker modules — silent drift risk when checkers are
-      added/removed (source: Claude Code) — `src/main.py:47-52`
+- [x] [debt] `_load_allowlist`: use `frozenset[str]` — commit 354a583
+- [x] [doc] Clarify NCMARM001 docstring suffix — commit 60b4c6e
+- [x] [constraint] CHECKER_ORDER drift guard test — commit 43b52d2
+- ~~[debt] `download_reason_checker._load_access_logs`: dedup on cache copy~~
+  *Resolved by refactor #106: `load_merged_excel` replaces cached path;
+  `drop_duplicates` now on fresh frame — no fix needed.*
 
 ### PR #108 — Add level-2 harness scripts and update CI/runbook (2026-06-01)
 
