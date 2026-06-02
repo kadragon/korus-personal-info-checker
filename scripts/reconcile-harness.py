@@ -95,6 +95,8 @@ def remove_empty_headings(backlog: str) -> str:
             if not following or re.match(r"^#+\s", following[0]):
                 continue
         result.append(line)
+    if not result:
+        return ""
     joined = "\n".join(result)
     # Preserve POSIX trailing newline when input had one
     if backlog.endswith("\n") and not joined.endswith("\n"):

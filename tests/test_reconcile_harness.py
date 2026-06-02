@@ -44,6 +44,12 @@ class TestRemoveEmptyHeadings:
         """Empty string returns empty string."""
         assert remove_empty_headings("") == ""
 
+    def test_all_headings_stripped_returns_empty_not_newline(self):
+        """All content stripped from \\n-terminated input must return '' not '\\n'."""
+        text = "## Active\n"
+        result = remove_empty_headings(text)
+        assert result == "", f"expected '' but got {result!r}"
+
 
 class TestAppendChangelog:
     def test_uses_append_mode(self, tmp_path, monkeypatch):

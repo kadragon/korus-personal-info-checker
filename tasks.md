@@ -21,3 +21,8 @@ status: active
 - [x] `reconcile-harness.py`: `append_changelog` → `open("a")` — 2afb6ed
 - [x] `reconcile-harness.py`: preserve trailing newline — 2afb6ed
 - [x] `validate-harness.sh`: gate Level 3 on WARN count — cf782cd
+
+### PR #109 — harness/pr108-sweep: harness sweep and validation improvements (2026-06-02)
+
+- [ ] [harness] `validate-harness.sh`: Level 3 WARN gate may be too strict
+- [ ] [harness] `validate-harness.sh`: Level 2 not gated on WARN count

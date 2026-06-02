@@ -118,8 +118,10 @@ for f in "${FINDINGS[@]}"; do echo "  $f"; done
 if [[ -f "tasks.md" ]]; then
     new_findings=()
     for f in "${FINDINGS[@]}"; do
-        if ! grep -qF -- "- [ ] $f" tasks.md 2>/dev/null; then
-            new_findings+=("$f")
+        f_oneline="${f//$'\n'/ }"
+        if ! grep -qF -- "- [ ] $f_oneline" tasks.md 2>/dev/null && \
+           ! grep -qF -- "- [x] $f_oneline" tasks.md 2>/dev/null; then
+            new_findings+=("$f_oneline")
         fi
     done
     if [[ ${#new_findings[@]} -gt 0 ]]; then
