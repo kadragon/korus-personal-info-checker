@@ -15,21 +15,9 @@ status: active
 
 ### PR #108 — Add level-2 harness scripts and update CI/runbook (2026-06-01)
 
-- [ ] [harness] `sync-claude-md.sh`: exit 1 for "created" case is non-standard;
-      future callers using `|| echo error` will misinterpret success as failure.
-      Fix: use exit 0, emit stdout to distinguish from no-op
-      (source: pr-review-toolkit:review-pr)
-- [ ] [harness] `sweep.sh`: missing `[5/5]` section label — progress counter
-      appears to stop at 4/5 (source: pr-review-toolkit:review-pr)
-- [ ] [harness] `sweep.sh`: duplicate findings appended on repeat runs — no
-      check if `## Sweep <date>` section already exists
-      (source: review) — `scripts/sweep.sh:444`
-- [ ] [harness] `reconcile-harness.py`: `append_changelog` uses read+overwrite;
-      use `open('a')` to avoid corruption on concurrent write
-      (source: review) — `scripts/reconcile-harness.py:233`
-- [ ] [harness] `reconcile-harness.py`: `remove_empty_headings` drops trailing
-      newline — non-POSIX file on first clean run
-      (source: pr-review-toolkit:review-pr) — `scripts/reconcile-harness.py:230`
-- [ ] [harness] `validate-harness.sh`: Level 3 not gated on WARN count — repo
-      with 0 FAILs and many WARNs still reports Level 3
-      (source: review) — `scripts/validate-harness.sh:877`
+- [x] `sync-claude-md.sh`: exit 0 + stdout marker for "created" — e3033f6
+- [x] `sweep.sh`: add `[5/5]` label — d081bf1
+- [x] `sweep.sh`: deduplicate findings on repeat runs — d081bf1
+- [x] `reconcile-harness.py`: `append_changelog` → `open("a")` — 2afb6ed
+- [x] `reconcile-harness.py`: preserve trailing newline — 2afb6ed
+- [x] `validate-harness.sh`: gate Level 3 on WARN count — cf782cd
