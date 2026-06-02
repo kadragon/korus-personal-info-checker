@@ -95,16 +95,19 @@ def remove_empty_headings(backlog: str) -> str:
             if not following or re.match(r"^#+\s", following[0]):
                 continue
         result.append(line)
-    return "\n".join(result)
+    joined = "\n".join(result)
+    # Preserve POSIX trailing newline when input had one
+    if backlog.endswith("\n") and not joined.endswith("\n"):
+        joined += "\n"
+    return joined
 
 
 def append_changelog(title: str, summary: str) -> None:
     if not CHANGELOG.exists():
         return
     entry = f"\n## {date.today()} — {title}\n\n{summary}\n"
-    CHANGELOG.write_text(
-        CHANGELOG.read_text(encoding="utf-8") + entry, encoding="utf-8"
-    )
+    with CHANGELOG.open("a", encoding="utf-8") as fh:
+        fh.write(entry)
 
 
 def count_items(backlog: str) -> tuple[int, int]:
