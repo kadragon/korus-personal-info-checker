@@ -2,9 +2,12 @@
 # B) CLAUDE.md Deterministic Sync
 #
 # Exit codes:
-#   0  Already contains exactly "@AGENTS.md" — nothing to do
-#   1  Did not exist → created with "@AGENTS.md"
+#   0  No action needed (already correct, or just created with "@AGENTS.md")
 #   2  Exists but differs → original content printed to stdout for Claude to process
+#
+# Stdout markers:
+#   "created CLAUDE.md"  — file did not exist; created with "@AGENTS.md"
+#   (original content)   — exit 2: file existed but differed
 
 set -euo pipefail
 
@@ -13,7 +16,8 @@ EXPECTED="@AGENTS.md"
 
 if [ ! -f "$CLAUDE_MD" ]; then
   printf '%s\n' "$EXPECTED" > "$CLAUDE_MD"
-  exit 1
+  echo "created CLAUDE.md"
+  exit 0
 fi
 
 # Trim all whitespace to compare
