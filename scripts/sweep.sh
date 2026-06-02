@@ -104,7 +104,7 @@ done
 
 [[ $harness_issues -eq 0 ]] && echo -e "  ${GREEN}All references valid${NC}"
 
-# ── 5. Summary ──────────────────────────────────────────────
+# ── [5/5] Summary ───────────────────────────────────────────
 echo ""
 if [[ ${#FINDINGS[@]} -eq 0 ]]; then
     echo -e "${GREEN}=== Sweep clean ===${NC}"
@@ -114,14 +114,24 @@ fi
 echo -e "${YELLOW}=== ${#FINDINGS[@]} finding(s) ===${NC}"
 for f in "${FINDINGS[@]}"; do echo "  $f"; done
 
-# Append to tasks.md if it exists
+# Append new findings to tasks.md, skipping any already present
 if [[ -f "tasks.md" ]]; then
-    echo "" >> tasks.md
-    echo "## Sweep $(date '+%Y-%m-%d %H:%M')" >> tasks.md
+    new_findings=()
     for f in "${FINDINGS[@]}"; do
-        echo "- [ ] $f" >> tasks.md
+        if ! grep -qF -- "- [ ] $f" tasks.md 2>/dev/null; then
+            new_findings+=("$f")
+        fi
     done
-    echo -e "${GREEN}Added ${#FINDINGS[@]} item(s) to tasks.md${NC}"
+    if [[ ${#new_findings[@]} -gt 0 ]]; then
+        echo "" >> tasks.md
+        echo "## Sweep $(date '+%Y-%m-%d %H:%M')" >> tasks.md
+        for f in "${new_findings[@]}"; do
+            echo "- [ ] $f" >> tasks.md
+        done
+        echo -e "${GREEN}Added ${#new_findings[@]} new item(s) to tasks.md${NC}"
+    else
+        echo -e "${GREEN}All findings already in tasks.md — nothing appended${NC}"
+    fi
 fi
 
 exit 1
