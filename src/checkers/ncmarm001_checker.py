@@ -3,7 +3,9 @@ Checks NCMARM001 permission grant logs for unauthorized escalations.
 
 Reads files prefixed NCMARM001_ from download_dir, excludes registrant IDs
 listed in NCMARM001_AUTHORIZED_IDS env var (comma-separated), and saves the
-remaining rows as "승인 없는 권한 상승" to save_dir.
+remaining rows to save_dir. The output filename suffix is the
+NCMARM001_UNAUTHORIZED_GRANT_SUFFIX constant ("승인없는권한상승", no spaces)
+which is used verbatim as a filename token.
 """
 
 import os
@@ -46,12 +48,14 @@ def run_check(download_dir: str, save_dir: str, prev_month: str) -> int:
     return len(df)
 
 
-def _load_allowlist() -> set[str]:
+def _load_allowlist() -> frozenset[str]:
     raw = os.getenv("NCMARM001_AUTHORIZED_IDS", "")
-    return {tok.strip() for tok in raw.split(",") if tok.strip()}
+    return frozenset(tok.strip() for tok in raw.split(",") if tok.strip())
 
 
-def _filter_unauthorized_grants(df: pd.DataFrame, allowlist: set[str]) -> pd.DataFrame:
+def _filter_unauthorized_grants(
+    df: pd.DataFrame, allowlist: frozenset[str]
+) -> pd.DataFrame:
     if cfg.COL_REGISTRANT_ID not in df.columns:
         raise ValueError(
             f"'{cfg.COL_REGISTRANT_ID}' 컬럼을 찾을 수 없어 필터링을 할 수 없습니다."

@@ -6,38 +6,23 @@ status: active
 
 ### PR #99 — Add NCMARM001 unauthorized permission escalation checker (2026-05-04)
 
-- [ ] [debt] `download_reason_checker._load_access_logs`:
-      `drop_duplicates(inplace=True)` applied to cache copy only —
-      first caller deduplicates, subsequent callers receive duplicates
-      (source: Claude Code) — `src/checkers/download_reason_checker.py:146`
-- [ ] [debt] `_load_allowlist` return type: use `frozenset[str]` instead of
-      `set[str]` to signal immutability (source: Claude Code) —
-      `src/checkers/ncmarm001_checker.py:49`
-- [ ] [doc] Module docstring says "승인 없는 권한 상승" (spaces) but config
-      constant `NCMARM001_UNAUTHORIZED_GRANT_SUFFIX` has no spaces —
-      clarify intent in docstring (source: Claude Code) —
-      `src/checkers/ncmarm001_checker.py:6`, `src/config.py:77`
-- [ ] [constraint] No test verifying all names in `CHECKER_ORDER` correspond
-      to existing checker modules — silent drift risk when checkers are
-      added/removed (source: Claude Code) — `src/main.py:47-52`
+- [x] [debt] `_load_allowlist`: use `frozenset[str]` — commit 354a583
+- [x] [doc] Clarify NCMARM001 docstring suffix — commit 60b4c6e
+- [x] [constraint] CHECKER_ORDER drift guard test — commit 43b52d2
+- ~~[debt] `download_reason_checker._load_access_logs`: dedup on cache copy~~
+  *Resolved by refactor #106: `load_merged_excel` replaces cached path;
+  `drop_duplicates` now on fresh frame — no fix needed.*
 
 ### PR #108 — Add level-2 harness scripts and update CI/runbook (2026-06-01)
 
-- [ ] [harness] `sync-claude-md.sh`: exit 1 for "created" case is non-standard;
-      future callers using `|| echo error` will misinterpret success as failure.
-      Fix: use exit 0, emit stdout to distinguish from no-op
-      (source: pr-review-toolkit:review-pr)
-- [ ] [harness] `sweep.sh`: missing `[5/5]` section label — progress counter
-      appears to stop at 4/5 (source: pr-review-toolkit:review-pr)
-- [ ] [harness] `sweep.sh`: duplicate findings appended on repeat runs — no
-      check if `## Sweep <date>` section already exists
-      (source: review) — `scripts/sweep.sh:444`
-- [ ] [harness] `reconcile-harness.py`: `append_changelog` uses read+overwrite;
-      use `open('a')` to avoid corruption on concurrent write
-      (source: review) — `scripts/reconcile-harness.py:233`
-- [ ] [harness] `reconcile-harness.py`: `remove_empty_headings` drops trailing
-      newline — non-POSIX file on first clean run
-      (source: pr-review-toolkit:review-pr) — `scripts/reconcile-harness.py:230`
-- [ ] [harness] `validate-harness.sh`: Level 3 not gated on WARN count — repo
-      with 0 FAILs and many WARNs still reports Level 3
-      (source: review) — `scripts/validate-harness.sh:877`
+- [x] `sync-claude-md.sh`: exit 0 + stdout marker for "created" — e3033f6
+- [x] `sweep.sh`: add `[5/5]` label — d081bf1
+- [x] `sweep.sh`: deduplicate findings on repeat runs — d081bf1
+- [x] `reconcile-harness.py`: `append_changelog` → `open("a")` — 2afb6ed
+- [x] `reconcile-harness.py`: preserve trailing newline — 2afb6ed
+- [x] `validate-harness.sh`: gate Level 3 on WARN count — cf782cd
+
+### PR #109 — harness/pr108-sweep: harness sweep and validation improvements (2026-06-02)
+
+- [ ] [harness] `validate-harness.sh`: Level 3 WARN gate may be too strict
+- [ ] [harness] `validate-harness.sh`: Level 2 not gated on WARN count

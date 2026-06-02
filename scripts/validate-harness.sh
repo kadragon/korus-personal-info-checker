@@ -331,8 +331,9 @@ if $level2; then
     $has_hooks && $has_precommit && level3=true
 fi
 
-# Downgrade all levels if hard failures found
+# Downgrade all levels if hard failures found; Level 3 also requires zero WARNs
 [[ $FAIL -gt 0 ]] && { level1=false; level2=false; level3=false; }
+[[ $WARN -gt 0 ]] && level3=false
 
 if $level3; then
     echo -e "  ${GREEN}LEVEL 3 — Enforced${NC}  (hooks + CI + drift detection active)"
