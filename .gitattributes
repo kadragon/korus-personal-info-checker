@@ -11,3 +11,7 @@
 *.txt   text eol=lf
 *.cfg   text eol=lf
 *.ini   text eol=lf
+
+# Prevent CRLF corruption of Excel input/output files.
+*.xls   binary
+*.xlsx  binary

@@ -6,6 +6,7 @@ See tasks.md PR #109 items and docs/runbook.md for script purpose.
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -35,13 +36,29 @@ def _find_bash() -> str | None:
     for c in candidates:
         if os.path.isfile(c):
             return c
-    return shutil.which("bash")
+    # Fallback: accept only if it's not WSL bash (WSL bash cannot cd to C:/ temp paths).
+    fallback = shutil.which("bash")
+    if fallback:
+        try:
+            uname = subprocess.run(
+                [fallback, "-c", "uname -r"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            if "microsoft" not in uname.stdout.lower():
+                return fallback
+        except (subprocess.TimeoutExpired, OSError):
+            pass
+    return None
 
 
 _BASH = _find_bash()
+_JQ: str | None = shutil.which("jq")
 
 pytestmark = pytest.mark.skipif(
-    _BASH is None, reason="bash not available in this environment"
+    _BASH is None or _JQ is None,
+    reason="bash and jq are required for harness tests but not available",
 )
 
 
@@ -170,15 +187,13 @@ Never add architecture summaries or style conventions enforced by tooling.
 def _run(root: Path) -> subprocess.CompletedProcess[str]:
     # Use forward-slash Windows paths (C:/...) — Git Bash accepts them for
     # both the script argument and the PROJ_DIR passed to ``cd``.
-    assert _BASH is not None, (
-        "bash not found; test should have been skipped by pytestmark"
-    )
     script = str(REPO_ROOT / "scripts" / "validate-harness.sh").replace("\\", "/")
     root_arg = str(root).replace("\\", "/")
     return subprocess.run(
         [_BASH, script, root_arg],
         capture_output=True,
         text=True,
+        timeout=30,
     )
 
 
@@ -212,7 +227,7 @@ class TestWarnDoesNotGateLevel:
         (tmp_path / "docs" / "eval-criteria.md").unlink()
 
         result = _run(tmp_path)
-        assert "WARN: 1" in result.stdout, (
+        assert re.search(r"WARN:\s*1\b", result.stdout), (
             f"Expected exactly 1 WARN. stdout:\n{result.stdout}"
         )
         assert "LEVEL 3" in result.stdout, (
@@ -230,6 +245,7 @@ class TestWarnDoesNotGateLevel:
 
         result = _run(tmp_path)
         assert "FAIL" in result.stdout
-        # Should NOT reach Level 2 or 3
         assert "LEVEL 3" not in result.stdout
         assert "LEVEL 2" not in result.stdout
+        assert "LEVEL 1" not in result.stdout
+        assert "LEVEL 0" in result.stdout
