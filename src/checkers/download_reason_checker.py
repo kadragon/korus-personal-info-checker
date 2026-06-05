@@ -14,7 +14,7 @@ import os
 import re
 from datetime import datetime
 from functools import partial
-from typing import Any, cast
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -25,6 +25,7 @@ from ..display import print_checker_header, print_info
 from ..utils import (
     CheckSpec,
     filter_by_time_conditions,
+    load_access_logs_cached,
     load_merged_excel,
     run_pipeline,
     save_excel_with_autofit,
@@ -135,7 +136,10 @@ def _load_access_logs(download_dir: str) -> pd.DataFrame | None:
     file_prefix = (
         f"{cfg.PERSONAL_INFO_ACCESS_LOG_PREFIX}{datetime.today().strftime('%Y%m')}"
     )
-    merged_df = load_merged_excel(download_dir, file_prefix)
+    # Cached loader: personal_file_checker already read these same access-log files
+    # earlier in CHECKER_ORDER, so the cache is warm — avoids a full re-read.
+    # Returns a copy, so the in-place drop_duplicates below cannot corrupt the cache.
+    merged_df = load_access_logs_cached(download_dir, file_prefix)
     if merged_df is None:
         return None
 
@@ -444,29 +448,42 @@ def _filter_high_freq_download(
     if config is None:
         config = DownloadConfig()
 
-    df_copy = df.copy()
-
-    flagged_indices: set[int] = set()
-
-    for _, group in df_copy.groupby(cfg.COL_EMPLOYEE_ID):
-        group = group.sort_values(cfg.COL_ACCESS_TIME).reset_index()
-
-        for i in range(len(group)):
-            current_download_time = cast(
-                pd.Timestamp, group.loc[i, cfg.COL_ACCESS_TIME]
-            )
-            window_end_time = current_download_time + pd.Timedelta(hours=1)
-
-            downloads_in_window = group[
-                (group[cfg.COL_ACCESS_TIME] >= current_download_time)
-                & (group[cfg.COL_ACCESS_TIME] <= window_end_time)
-            ]
-
-            if len(downloads_in_window) >= config.frequency_threshold:
-                flagged_indices.update(downloads_in_window["index"].tolist())
-
-    if flagged_indices:
-        result_df = df_copy.loc[sorted(flagged_indices)]
-        return result_df.sort_values([cfg.COL_EMPLOYEE_ID, cfg.COL_ACCESS_TIME])
-    else:
+    if df.empty:
         return pd.DataFrame(columns=df.columns)
+
+    # Vectorized sliding window. Per employee, window bounds are kept bit-identical
+    # to the original per-row mask  (t >= t_i) & (t <= t_i + 1h):
+    #   lo_i = searchsorted(t, t_i,      "left")   -> first t >= t_i
+    #   hi_i = searchsorted(t, t_i + 1h, "right")  -> first t  > t_i + 1h
+    # A row is flagged iff it falls in any window whose row count >= threshold;
+    # the union of qualifying [lo_i, hi_i) ranges is computed with a difference
+    # array. See tools/bench_filters_parity.py for the equivalence proof.
+    window = np.timedelta64(1, "h")
+    threshold = config.frequency_threshold
+    flagged: list[np.ndarray] = []
+
+    for _, group in df.groupby(cfg.COL_EMPLOYEE_ID, sort=False):
+        original_index = group.index.to_numpy()
+        times = group[cfg.COL_ACCESS_TIME].to_numpy()
+        order = np.argsort(times, kind="mergesort")
+        times = times[order]
+        original_index = original_index[order]
+        n = times.size
+
+        lo = np.searchsorted(times, times, side="left")
+        hi = np.searchsorted(times, times + window, side="right")
+        qualifying = np.nonzero((hi - lo) >= threshold)[0]
+        if qualifying.size == 0:
+            continue
+
+        diff = np.zeros(n + 1, dtype=np.int64)
+        np.add.at(diff, lo[qualifying], 1)
+        np.add.at(diff, hi[qualifying], -1)
+        covered = np.cumsum(diff[:-1]) > 0
+        flagged.append(original_index[covered])
+
+    if not flagged:
+        return pd.DataFrame(columns=df.columns)
+
+    idx = np.sort(np.concatenate(flagged))
+    return df.loc[idx].sort_values([cfg.COL_EMPLOYEE_ID, cfg.COL_ACCESS_TIME])

@@ -174,18 +174,16 @@ def save_excel_with_autofit(df: pd.DataFrame, path: str) -> None:
         path (str): The full path (including filename) where the Excel file
         will be saved.
     """
-    df.to_excel(path, index=False)
-    wb = openpyxl.load_workbook(path)
-    ws = wb.active
-
-    if ws is None:
-        wb.close()
-        print_error("활성 워크시트를 찾을 수 없어 서식을 적용할 수 없습니다.")
-        return
-
-    _apply_korus_style(ws)
-    wb.save(path)
-    wb.close()
+    # Style the in-memory workbook that to_excel builds, then save once.
+    # Avoids the previous write -> load_workbook (full reparse) -> save (2nd write)
+    # round-trip; output is byte-identical. See tools/bench_write_and_stress.py.
+    with pd.ExcelWriter(path, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False)
+        ws = writer.book.active
+        if ws is None:
+            print_error("활성 워크시트를 찾을 수 없어 서식을 적용할 수 없습니다.")
+            return
+        _apply_korus_style(ws)
 
 
 def style_excel_file(path: str) -> None:
@@ -227,8 +225,10 @@ def _merge_and_preprocess_files(
         file_path = os.path.join(download_dir, file_name)
         try:
             if file_path.lower().endswith(".xlsx"):
-                df = pd.read_excel(file_path)
+                # calamine (Rust) parses .xlsx ~5x faster than openpyxl.
+                df = pd.read_excel(file_path, engine="calamine")
             else:
+                # Legacy .xls stays on xlrd (calamine .xls parity unverified here).
                 df = pd.read_excel(file_path, engine="xlrd")
             all_dfs.append(df)
         except Exception as e:
