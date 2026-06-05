@@ -1,4 +1,3 @@
-import os
 from datetime import datetime
 
 import pandas as pd
@@ -177,6 +176,60 @@ class TestFilterHighFreqDownload:
             drc._filter_high_freq_download(None)
 
 
+class TestFilterHighFreqDownloadFreeze:
+    """Golden characterization — freezes detection output so the vectorized
+    rewrite cannot drift (PIPA: flagged row-set must stay bit-identical).
+
+    Threshold = 20 downloads within a 1-hour window (DOWNLOAD_FREQUENCY_THRESHOLD).
+    """
+
+    def _frame(self) -> pd.DataFrame:
+        rows = []
+        # E1: exactly 20 downloads inside one hour -> the whole burst flags.
+        for i in range(20):
+            rows.append(("E1", datetime(2026, 5, 1, 9, i)))
+        # E2: 19 downloads inside one hour -> below threshold, never flagged.
+        for i in range(19):
+            rows.append(("E2", datetime(2026, 5, 1, 11, i)))
+        # E3: 3 downloads spread across days -> never in a dense window.
+        for d in range(3):
+            rows.append(("E3", datetime(2026, 5, 1 + d, 14, 0)))
+        return pd.DataFrame(
+            {
+                cfg.COL_EMPLOYEE_ID: [r[0] for r in rows],
+                cfg.COL_ACCESS_TIME: [r[1] for r in rows],
+                cfg.COL_DOWNLOAD_REASON: ["x"] * len(rows),
+                cfg.COL_DOWNLOAD_COUNT: [1] * len(rows),
+            }
+        )
+
+    def test_frozen_flagged_set(self):
+        result = drc._filter_high_freq_download(self._frame())
+        # Exactly E1's 20-row burst, nothing else.
+        assert len(result) == 20
+        assert set(result[cfg.COL_EMPLOYEE_ID]) == {"E1"}
+        # Sorted by (employee, time) — first row is the burst start.
+        assert result.iloc[0][cfg.COL_ACCESS_TIME] == datetime(2026, 5, 1, 9, 0)
+
+    def test_threshold_boundary_excludes_19(self):
+        result = drc._filter_high_freq_download(self._frame())
+        assert "E2" not in set(result[cfg.COL_EMPLOYEE_ID])
+        assert "E3" not in set(result[cfg.COL_EMPLOYEE_ID])
+
+    def test_nat_timestamps_never_flagged(self):
+        # 25 rows with missing 접속일시 must not form a synthetic window.
+        # Original per-row mask compared NaT and got False -> never flagged.
+        df = pd.DataFrame(
+            {
+                cfg.COL_EMPLOYEE_ID: ["E9"] * 25,
+                cfg.COL_ACCESS_TIME: [pd.NaT] * 25,
+                cfg.COL_DOWNLOAD_REASON: ["x"] * 25,
+                cfg.COL_DOWNLOAD_COUNT: [1] * 25,
+            }
+        )
+        assert drc._filter_high_freq_download(df).empty
+
+
 class TestRunCheck:
     def test_run_check_with_data(self, temp_dir, sample_download_df, mocker):
         mocker.patch("src.checkers.download_reason_checker.print_checker_header")
@@ -226,7 +279,6 @@ class TestRunCheck:
     def test_run_check_with_access_logs_enriches(
         self, temp_dir, sample_download_df, mocker
     ):
-        merged_path = os.path.join(temp_dir, "merged.xlsx")
         access_df = pd.DataFrame(
             {
                 cfg.COL_EMPLOYEE_ID: ["emp1"],
@@ -523,7 +575,7 @@ class TestEnrichWithAccessLogSummary:
 class TestLoadAccessLogs:
     def test_returns_none_when_no_files(self, temp_dir, mocker):
         mocker.patch(
-            "src.checkers.download_reason_checker.load_merged_excel",
+            "src.checkers.download_reason_checker.load_access_logs_cached",
             return_value=None,
         )
         result = drc._load_access_logs(temp_dir)
@@ -531,7 +583,7 @@ class TestLoadAccessLogs:
 
     def test_returns_none_on_environment_error(self, temp_dir, mocker):
         mocker.patch(
-            "src.checkers.download_reason_checker.load_merged_excel",
+            "src.checkers.download_reason_checker.load_access_logs_cached",
             return_value=None,
         )
         result = drc._load_access_logs(temp_dir)
@@ -539,7 +591,7 @@ class TestLoadAccessLogs:
 
     def test_returns_none_when_cache_returns_none(self, temp_dir, mocker):
         mocker.patch(
-            "src.checkers.download_reason_checker.load_merged_excel",
+            "src.checkers.download_reason_checker.load_access_logs_cached",
             return_value=None,
         )
         result = drc._load_access_logs(temp_dir)
@@ -558,7 +610,7 @@ class TestLoadAccessLogs:
             }
         )
         mocker.patch(
-            "src.checkers.download_reason_checker.load_merged_excel",
+            "src.checkers.download_reason_checker.load_access_logs_cached",
             return_value=raw_df,
         )
         result = drc._load_access_logs(temp_dir)
@@ -567,7 +619,7 @@ class TestLoadAccessLogs:
 
     def test_searches_with_current_month_date(self, temp_dir, mocker):
         mock_load = mocker.patch(
-            "src.checkers.download_reason_checker.load_merged_excel",
+            "src.checkers.download_reason_checker.load_access_logs_cached",
             return_value=None,
         )
         drc._load_access_logs(temp_dir)

@@ -1,7 +1,6 @@
 """Tests for load_access_logs_cached and clear_access_log_cache in utils."""
 
 import pandas as pd
-import pytest
 
 from src import utils
 
@@ -68,14 +67,17 @@ class TestLoadAccessLogsCached:
         assert list(result_b["교직원ID"]) == ["empB"]
         assert mock_find.call_count == 2
 
-    def test_environment_error_propagates(self, mocker):
-        """EnvironmentError from _find_excel_files propagates to caller."""
+    def test_environment_error_returns_none(self, mocker):
+        """EnvironmentError from _find_excel_files is caught -> returns None.
+
+        Matches load_merged_excel: a missing/unreadable dir is a skippable
+        condition, not a crash (the orchestrator continues with other checkers).
+        """
         mocker.patch(
             "src.utils._find_excel_files",
             side_effect=EnvironmentError("bad dir"),
         )
-        with pytest.raises(EnvironmentError):
-            utils.load_access_logs_cached("/bad/path", "prefix_202501")
+        assert utils.load_access_logs_cached("/bad/path", "prefix_202501") is None
 
 
 class TestClearAccessLogCache:

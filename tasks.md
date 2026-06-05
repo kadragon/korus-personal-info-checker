@@ -28,3 +28,18 @@ status: active
   removed; WARNs advisory only
 - [x] [harness] `validate-harness.sh`: Level 2 not WARN-gated —
   now consistent (neither level WARN-gated)
+
+### PR #112 — Vectorize hot-path filters, single-pass write, calamine read (2026-06-05)
+
+Out-of-scope review items (4 reviewers). Pre-existing or beyond this PR's scope.
+
+- [ ] [deferred] `utils.load_access_logs_cached`: cache key `(download_dir, file_prefix)`
+  ignores file mtime → stale data in long-lived (daemon/notebook) sessions. *Source:
+  Antigravity (P2). Deferred: pre-existing fn; the CLI is one-shot so intra-process
+  mutation can't occur. Fix later: add `tuple(os.path.getmtime(...) for f in excel_files)`
+  to the key.*
+- [ ] [deferred] `utils.save_excel_with_autofit`: early `return` on `ws is None` leaves an
+  unstyled file (ExcelWriter `__exit__` still saves). *Source: pr-review-toolkit (P2).
+  Deferred: not a regression — original `to_excel(path)` already wrote an unstyled file
+  before the same return; branch unreachable post-`to_excel`. Fix later: raise, or
+  `os.remove(path)` outside the context.*

@@ -8,6 +8,7 @@ dependencies = [
     "holidays==0.98",
     "openpyxl>=3.1.5",
     "pandas>=3.0.3",
+    "python-calamine>=0.2.3",
     "python-dateutil>=2.9.0.post0",
     "python-dotenv>=1.1.0",
     "rich>=15.0.0",
@@ -29,6 +30,8 @@ packages = ["src"]
 
 [tool.ruff]
 line-length = 88
+# tools/ holds throwaway benchmark/analysis scripts, not shipped code.
+extend-exclude = ["tools"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "C4", "SIM"]

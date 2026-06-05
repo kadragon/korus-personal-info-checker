@@ -56,6 +56,65 @@ class TestFilterIpSwitch:
             lc._filter_ip_switch(None)
 
 
+class TestFilterIpSwitchFreeze:
+    """Golden characterization — freezes detection output (flagged rows AND the
+    derived 사유추정/위험도/고유IP수/고유서브넷수 columns) so the vectorized
+    rewrite cannot drift. PIPA: detection output must stay bit-identical.
+
+    Threshold = 3 distinct IPs within a 1-hour window (LOGIN_IP_SWITCH_MIN_IPS).
+    """
+
+    def _frame(self) -> pd.DataFrame:
+        rows = [
+            # E1: 3 distinct private /16s within 1h, 20-min gaps -> flagged.
+            ("E1", datetime(2026, 5, 1, 9, 0), "192.168.1.1"),
+            ("E1", datetime(2026, 5, 1, 9, 20), "10.0.0.1"),
+            ("E1", datetime(2026, 5, 1, 9, 40), "172.16.0.1"),
+            # E2: 3 logins, all the same IP -> never flagged.
+            ("E2", datetime(2026, 5, 1, 10, 0), "192.168.5.5"),
+            ("E2", datetime(2026, 5, 1, 10, 20), "192.168.5.5"),
+            ("E2", datetime(2026, 5, 1, 10, 40), "192.168.5.5"),
+            # E3: only 2 distinct IPs -> below threshold.
+            ("E3", datetime(2026, 5, 1, 11, 0), "192.168.9.1"),
+            ("E3", datetime(2026, 5, 1, 11, 20), "192.168.9.2"),
+        ]
+        return pd.DataFrame(
+            {
+                cfg.COL_EMPLOYEE_ID: [r[0] for r in rows],
+                cfg.COL_ACCESS_TIME: [r[1] for r in rows],
+                cfg.COL_IP: [r[2] for r in rows],
+            }
+        )
+
+    def test_frozen_flagged_set(self):
+        result = lc._filter_ip_switch(self._frame())
+        assert len(result) == 3
+        assert set(result[cfg.COL_EMPLOYEE_ID]) == {"E1"}
+
+    def test_frozen_reason_columns(self):
+        result = lc._filter_ip_switch(self._frame())
+        # all three private /16s, gaps > fast-switch window -> stable classification
+        assert (
+            list(result[cfg.COL_ESTIMATED_REASON])
+            == [cfg.REASON_PRIVATE_CROSS_SUBNET] * 3
+        )
+        assert list(result[cfg.COL_RISK_LEVEL]) == [cfg.RISK_MEDIUM] * 3
+        assert list(result[cfg.COL_UNIQUE_IP_COUNT]) == [3] * 3
+        assert list(result[cfg.COL_UNIQUE_SUBNET_COUNT]) == [3] * 3
+
+    def test_nat_timestamps_never_flagged(self):
+        # 3 distinct IPs but all timestamps missing -> no real window -> not flagged.
+        # Original per-row mask compared NaT and got False -> never flagged.
+        df = pd.DataFrame(
+            {
+                cfg.COL_EMPLOYEE_ID: ["E9"] * 3,
+                cfg.COL_ACCESS_TIME: [pd.NaT, pd.NaT, pd.NaT],
+                cfg.COL_IP: ["1.1.1.1", "2.2.2.2", "3.3.3.3"],
+            }
+        )
+        assert lc._filter_ip_switch(df).empty
+
+
 class TestEstimateIpSwitchReason:
     def test_empty_input_has_reason_column(self):
         empty_df = pd.DataFrame(

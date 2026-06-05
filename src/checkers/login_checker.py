@@ -14,6 +14,7 @@ import os
 from datetime import datetime
 from functools import partial
 
+import numpy as np
 import pandas as pd
 
 from .. import config as cfg
@@ -320,38 +321,59 @@ def _filter_ip_switch(
     if config is None:
         config = LoginConfig()
 
-    df_copy = df.copy()
+    # Rows with a missing timestamp never fell inside any window under the original
+    # per-row mask (NaT comparisons are False). Drop them up front so NaT does not
+    # sort to the array end and form a spurious qualifying window.
+    df = df.dropna(subset=[cfg.COL_ACCESS_TIME])
 
-    flagged_indices: set[int] = set()
+    # Vectorized sliding window. Per employee, window bounds stay bit-identical to
+    # the original per-row mask  (t >= t_i) & (t <= t_i + window):
+    #   lo_i = searchsorted(t, t_i,          "left")   -> first t >= t_i
+    #   hi_i = searchsorted(t, t_i + window, "right")  -> first t  > t_i + window
+    # A row is flagged iff it falls in any window holding >= min_ips distinct
+    # (non-null) IPs; the union of qualifying [lo_i, hi_i) ranges is a difference
+    # array. See tools/bench_filters_parity.py for the equivalence proof.
+    window = np.timedelta64(config.ip_switch_window_hours, "h")
+    min_ips = config.ip_switch_min_ips
+    flagged: list[np.ndarray] = []
 
-    for _, group in df_copy.groupby(cfg.COL_EMPLOYEE_ID):
-        group = group.sort_values(cfg.COL_ACCESS_TIME)
+    for _, group in df.groupby(cfg.COL_EMPLOYEE_ID, sort=False):
+        original_index = group.index.to_numpy()
+        times = group[cfg.COL_ACCESS_TIME].to_numpy()
+        order = np.argsort(times, kind="mergesort")
+        times = times[order]
+        original_index = original_index[order]
+        # factorize IPs; NaN/None -> code -1 so they are excluded (mirrors .dropna())
+        ip_codes, _ = pd.factorize(
+            pd.Series(group[cfg.COL_IP].to_numpy()[order]), use_na_sentinel=True
+        )
+        n = times.size
 
-        for i in range(len(group)):
-            current_login_time = group.iloc[i][cfg.COL_ACCESS_TIME]
-            window_end_time = current_login_time + pd.Timedelta(
-                hours=config.ip_switch_window_hours
-            )
+        lo = np.searchsorted(times, times, side="left")
+        hi = np.searchsorted(times, times + window, side="right")
+        diff = np.zeros(n + 1, dtype=np.int64)
+        any_qualifying = False
+        for i in range(n):
+            segment = ip_codes[lo[i] : hi[i]]
+            segment = segment[segment >= 0]
+            if segment.size and np.unique(segment).size >= min_ips:
+                diff[lo[i]] += 1
+                diff[hi[i]] -= 1
+                any_qualifying = True
+        if not any_qualifying:
+            continue
 
-            logins_in_window = group[
-                (group[cfg.COL_ACCESS_TIME] >= current_login_time)
-                & (group[cfg.COL_ACCESS_TIME] <= window_end_time)
-            ]
+        covered = np.cumsum(diff[:-1]) > 0
+        flagged.append(original_index[covered])
 
-            if (
-                len(set(logins_in_window[cfg.COL_IP].dropna()))
-                >= config.ip_switch_min_ips
-            ):
-                flagged_indices.update(logins_in_window.index)
-
-    if flagged_indices:
-        result_df = df_copy.loc[sorted(flagged_indices)]
-        result_df = result_df.sort_values([cfg.COL_EMPLOYEE_ID, cfg.COL_ACCESS_TIME])
-        return _estimate_ip_switch_reason(result_df, config)
-    else:
+    if not flagged:
         empty_df = pd.DataFrame(columns=df.columns)
         empty_df[cfg.COL_ESTIMATED_REASON] = pd.Series(dtype="str")
         empty_df[cfg.COL_RISK_LEVEL] = pd.Series(dtype="str")
         empty_df[cfg.COL_UNIQUE_IP_COUNT] = pd.Series(dtype="int")
         empty_df[cfg.COL_UNIQUE_SUBNET_COUNT] = pd.Series(dtype="int")
         return empty_df
+
+    idx = np.sort(np.concatenate(flagged))
+    result_df = df.loc[idx].sort_values([cfg.COL_EMPLOYEE_ID, cfg.COL_ACCESS_TIME])
+    return _estimate_ip_switch_reason(result_df, config)
