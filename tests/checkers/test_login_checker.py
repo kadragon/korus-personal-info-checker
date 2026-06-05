@@ -78,11 +78,13 @@ class TestFilterIpSwitchFreeze:
             ("E3", datetime(2026, 5, 1, 11, 0), "192.168.9.1"),
             ("E3", datetime(2026, 5, 1, 11, 20), "192.168.9.2"),
         ]
-        return pd.DataFrame({
-            cfg.COL_EMPLOYEE_ID: [r[0] for r in rows],
-            cfg.COL_ACCESS_TIME: [r[1] for r in rows],
-            cfg.COL_IP: [r[2] for r in rows],
-        })
+        return pd.DataFrame(
+            {
+                cfg.COL_EMPLOYEE_ID: [r[0] for r in rows],
+                cfg.COL_ACCESS_TIME: [r[1] for r in rows],
+                cfg.COL_IP: [r[2] for r in rows],
+            }
+        )
 
     def test_frozen_flagged_set(self):
         result = lc._filter_ip_switch(self._frame())
@@ -92,12 +94,25 @@ class TestFilterIpSwitchFreeze:
     def test_frozen_reason_columns(self):
         result = lc._filter_ip_switch(self._frame())
         # all three private /16s, gaps > fast-switch window -> stable classification
-        assert list(result[cfg.COL_ESTIMATED_REASON]) == [
-            cfg.REASON_PRIVATE_CROSS_SUBNET
-        ] * 3
+        assert (
+            list(result[cfg.COL_ESTIMATED_REASON])
+            == [cfg.REASON_PRIVATE_CROSS_SUBNET] * 3
+        )
         assert list(result[cfg.COL_RISK_LEVEL]) == [cfg.RISK_MEDIUM] * 3
         assert list(result[cfg.COL_UNIQUE_IP_COUNT]) == [3] * 3
         assert list(result[cfg.COL_UNIQUE_SUBNET_COUNT]) == [3] * 3
+
+    def test_nat_timestamps_never_flagged(self):
+        # 3 distinct IPs but all timestamps missing -> no real window -> not flagged.
+        # Original per-row mask compared NaT and got False -> never flagged.
+        df = pd.DataFrame(
+            {
+                cfg.COL_EMPLOYEE_ID: ["E9"] * 3,
+                cfg.COL_ACCESS_TIME: [pd.NaT, pd.NaT, pd.NaT],
+                cfg.COL_IP: ["1.1.1.1", "2.2.2.2", "3.3.3.3"],
+            }
+        )
+        assert lc._filter_ip_switch(df).empty
 
 
 class TestEstimateIpSwitchReason:

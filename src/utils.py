@@ -282,7 +282,12 @@ def load_access_logs_cached(download_dir: str, file_prefix: str) -> pd.DataFrame
     key = (download_dir, file_prefix)
     if key in _ACCESS_LOG_CACHE:
         return _ACCESS_LOG_CACHE[key].copy()
-    excel_files = _find_excel_files(download_dir, file_prefix)
+    try:
+        excel_files = _find_excel_files(download_dir, file_prefix)
+    except EnvironmentError as e:
+        # Match load_merged_excel: a missing/unreadable dir is a skip, not a crash.
+        print_info(str(e))
+        return None
     if not excel_files:
         return None
     merged = _merge_and_preprocess_files(excel_files, download_dir)

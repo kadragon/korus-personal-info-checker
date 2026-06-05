@@ -321,6 +321,11 @@ def _filter_ip_switch(
     if config is None:
         config = LoginConfig()
 
+    # Rows with a missing timestamp never fell inside any window under the original
+    # per-row mask (NaT comparisons are False). Drop them up front so NaT does not
+    # sort to the array end and form a spurious qualifying window.
+    df = df.dropna(subset=[cfg.COL_ACCESS_TIME])
+
     # Vectorized sliding window. Per employee, window bounds stay bit-identical to
     # the original per-row mask  (t >= t_i) & (t <= t_i + window):
     #   lo_i = searchsorted(t, t_i,          "left")   -> first t >= t_i

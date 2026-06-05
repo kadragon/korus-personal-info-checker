@@ -194,12 +194,14 @@ class TestFilterHighFreqDownloadFreeze:
         # E3: 3 downloads spread across days -> never in a dense window.
         for d in range(3):
             rows.append(("E3", datetime(2026, 5, 1 + d, 14, 0)))
-        return pd.DataFrame({
-            cfg.COL_EMPLOYEE_ID: [r[0] for r in rows],
-            cfg.COL_ACCESS_TIME: [r[1] for r in rows],
-            cfg.COL_DOWNLOAD_REASON: ["x"] * len(rows),
-            cfg.COL_DOWNLOAD_COUNT: [1] * len(rows),
-        })
+        return pd.DataFrame(
+            {
+                cfg.COL_EMPLOYEE_ID: [r[0] for r in rows],
+                cfg.COL_ACCESS_TIME: [r[1] for r in rows],
+                cfg.COL_DOWNLOAD_REASON: ["x"] * len(rows),
+                cfg.COL_DOWNLOAD_COUNT: [1] * len(rows),
+            }
+        )
 
     def test_frozen_flagged_set(self):
         result = drc._filter_high_freq_download(self._frame())
@@ -213,6 +215,19 @@ class TestFilterHighFreqDownloadFreeze:
         result = drc._filter_high_freq_download(self._frame())
         assert "E2" not in set(result[cfg.COL_EMPLOYEE_ID])
         assert "E3" not in set(result[cfg.COL_EMPLOYEE_ID])
+
+    def test_nat_timestamps_never_flagged(self):
+        # 25 rows with missing 접속일시 must not form a synthetic window.
+        # Original per-row mask compared NaT and got False -> never flagged.
+        df = pd.DataFrame(
+            {
+                cfg.COL_EMPLOYEE_ID: ["E9"] * 25,
+                cfg.COL_ACCESS_TIME: [pd.NaT] * 25,
+                cfg.COL_DOWNLOAD_REASON: ["x"] * 25,
+                cfg.COL_DOWNLOAD_COUNT: [1] * 25,
+            }
+        )
+        assert drc._filter_high_freq_download(df).empty
 
 
 class TestRunCheck:

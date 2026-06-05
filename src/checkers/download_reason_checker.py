@@ -448,6 +448,11 @@ def _filter_high_freq_download(
     if config is None:
         config = DownloadConfig()
 
+    # Rows with a missing timestamp never fell inside any window under the original
+    # per-row mask (NaT comparisons are False). Drop them up front so NaT does not
+    # sort to the array end and form a spurious qualifying window.
+    df = df.dropna(subset=[cfg.COL_ACCESS_TIME])
+
     if df.empty:
         return pd.DataFrame(columns=df.columns)
 
