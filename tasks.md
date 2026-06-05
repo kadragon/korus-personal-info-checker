@@ -1,20 +1,45 @@
-# Out-of-scope review items — PR #112 (perf/pipeline-hotpaths)
+# Tasks
 
-Recorded by dev-review-cycle. Not applied in this PR (pre-existing or beyond scope).
+status: active
 
-## D. Cache key ignores file mtime → stale data in long-lived sessions
-- **Source:** Antigravity (P2)
-- **Where:** `src/utils.py` `load_access_logs_cached` — key is `(download_dir, file_prefix)` only.
-- **Why deferred:** Pre-existing function (not introduced by this PR). The CLI (`uv run korus-checker`)
-  is a one-shot process that exits after a single run, so intra-process file mutation cannot occur.
-  Only relevant for hypothetical daemon/notebook reuse.
-- **If addressed later:** include `tuple(os.path.getmtime(...) for f in excel_files)` in the cache key.
+## Review Backlog
 
-## E. `save_excel_with_autofit` leaves an unstyled file on `ws is None`
-- **Source:** pr-review-toolkit (P2)
-- **Where:** `src/utils.py` `save_excel_with_autofit` — early `return` inside the `ExcelWriter`
-  context still saves an unstyled workbook on `__exit__`.
-- **Why deferred:** Not a regression. The original code already left an unstyled file in this case
-  (`df.to_excel(path)` wrote it before the `ws is None` return). The branch is also practically
-  unreachable — `.active` is never None immediately after `to_excel`.
-- **If addressed later:** raise instead of returning, or `os.remove(path)` outside the context.
+### PR #99 — Add NCMARM001 unauthorized permission escalation checker (2026-05-04)
+
+- [x] [debt] `_load_allowlist`: use `frozenset[str]` — commit 354a583
+- [x] [doc] Clarify NCMARM001 docstring suffix — commit 60b4c6e
+- [x] [constraint] CHECKER_ORDER drift guard test — commit 43b52d2
+- ~~[debt] `download_reason_checker._load_access_logs`: dedup on cache copy~~
+  *Resolved by refactor #106: `load_merged_excel` replaces cached path;
+  `drop_duplicates` now on fresh frame — no fix needed.*
+
+### PR #108 — Add level-2 harness scripts and update CI/runbook (2026-06-01)
+
+- [x] `sync-claude-md.sh`: exit 0 + stdout marker for "created" — e3033f6
+- [x] `sweep.sh`: add `[5/5]` label — d081bf1
+- [x] `sweep.sh`: deduplicate findings on repeat runs — d081bf1
+- [x] `reconcile-harness.py`: `append_changelog` → `open("a")` — 2afb6ed
+- [x] `reconcile-harness.py`: preserve trailing newline — 2afb6ed
+- [x] `validate-harness.sh`: gate Level 3 on WARN count — cf782cd
+
+### PR #109 — harness/pr108-sweep: harness sweep and validation improvements (2026-06-02)
+
+- [x] [harness] `validate-harness.sh`: Level 3 WARN gate too strict —
+  removed; WARNs advisory only
+- [x] [harness] `validate-harness.sh`: Level 2 not WARN-gated —
+  now consistent (neither level WARN-gated)
+
+### PR #112 — Vectorize hot-path filters, single-pass write, calamine read (2026-06-05)
+
+Out-of-scope review items (4 reviewers). Pre-existing or beyond this PR's scope.
+
+- [ ] [deferred] `utils.load_access_logs_cached`: cache key `(download_dir, file_prefix)`
+  ignores file mtime → stale data in long-lived (daemon/notebook) sessions. *Source:
+  Antigravity (P2). Deferred: pre-existing fn; the CLI is one-shot so intra-process
+  mutation can't occur. Fix later: add `tuple(os.path.getmtime(...) for f in excel_files)`
+  to the key.*
+- [ ] [deferred] `utils.save_excel_with_autofit`: early `return` on `ws is None` leaves an
+  unstyled file (ExcelWriter `__exit__` still saves). *Source: pr-review-toolkit (P2).
+  Deferred: not a regression — original `to_excel(path)` already wrote an unstyled file
+  before the same return; branch unreachable post-`to_excel`. Fix later: raise, or
+  `os.remove(path)` outside the context.*

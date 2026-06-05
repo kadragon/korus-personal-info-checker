@@ -6,10 +6,11 @@ Trace: SPEC-test-coverage-improvement-1, TEST-main-1
 """
 
 import os
+import pkgutil
 from pathlib import Path
 
+from src import checkers, main
 from src import config as cfg
-from src import main
 from src.report_generator import CheckResults
 
 
@@ -186,6 +187,28 @@ class TestDiscoverAndRunCheckers:
 
         assert call_order[0] == "login_checker"
         assert call_order[1] == "zzz_checker"
+
+
+class TestCheckerOrderConsistency:
+    """Guards that CHECKER_ORDER contains only real, discoverable checker modules."""
+
+    def test_checker_order_entries_exist_as_modules(self):
+        """Every name in CHECKER_ORDER must match a discovered *_checker module.
+
+        This prevents silent drift when checkers are added or removed —
+        an obsolete name in CHECKER_ORDER would never run and would not be obvious.
+        """
+        discovered = {
+            info.name
+            for info in pkgutil.iter_modules(checkers.__path__)
+            if info.name.endswith("_checker")
+        }
+        for name in main.CHECKER_ORDER:
+            assert name in discovered, (
+                f"CHECKER_ORDER entry '{name}' does not correspond to any "
+                f"discovered checker module. Remove it from CHECKER_ORDER or "
+                f"add the missing checker file."
+            )
 
 
 class TestMain:

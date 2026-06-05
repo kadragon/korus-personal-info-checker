@@ -34,3 +34,6 @@ jobs:
 
       - name: Pytest
         run: uv run pytest
+
+      - name: Validate harness
+        run: bash scripts/validate-harness.sh
