@@ -8,7 +8,7 @@ dependencies = [
     "holidays==0.99",
     "openpyxl>=3.1.5",
     "pandas>=3.0.3",
-    "python-calamine>=0.2.3",
+    "python-calamine>=0.7.0",
     "python-dateutil>=2.9.0.post0",
     "python-dotenv>=1.1.0",
     "rich>=15.0.0",
@@ -19,7 +19,7 @@ dependencies = [
 korus-checker = "src.main:main"
 
 [project.optional-dependencies]
-dev = ["ruff==0.15.17", "mypy", "bandit==1.9.4", "pandas-stubs==3.0.3.260530", "types-openpyxl", "types-python-dateutil", "pre-commit", "pytest", "pytest-cov", "pytest-mock"]
+dev = ["ruff==0.15.18", "mypy", "bandit==1.9.4", "pandas-stubs==3.0.3.260530", "types-openpyxl", "types-python-dateutil", "pre-commit", "pytest", "pytest-cov", "pytest-mock"]
 
 [build-system]
 requires = ["hatchling"]
