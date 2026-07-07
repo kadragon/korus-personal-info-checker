@@ -5,7 +5,7 @@ description = "KORUS 개인정보처리시스템 접속기록 점검 도구"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "holidays==0.99",
+    "holidays==0.100",
     "openpyxl>=3.1.5",
     "pandas>=3.0.3",
     "python-calamine>=0.7.0",
