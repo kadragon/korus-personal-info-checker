@@ -16,9 +16,6 @@ updates:
       dependencies:
         patterns:
           - "*"
-        update-types:
-          - "minor"
-          - "patch"
 
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -27,4 +24,3 @@ updates:
     groups:
       actions:
         patterns: ["*"]
-        update-types: ["minor", "patch"]
