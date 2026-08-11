@@ -19,7 +19,7 @@ dependencies = [
 korus-checker = "src.main:main"
 
 [project.optional-dependencies]
-dev = ["ruff==0.16.1", "mypy", "bandit==1.9.4", "pandas-stubs==3.0.5.260730", "types-openpyxl", "types-python-dateutil", "pre-commit", "pytest", "pytest-cov", "pytest-mock"]
+dev = ["ruff==0.16.2", "mypy", "bandit==1.9.4", "pandas-stubs==3.0.5.260730", "types-openpyxl", "types-python-dateutil", "pre-commit", "pytest", "pytest-cov", "pytest-mock"]
 
 [build-system]
 requires = ["hatchling"]
