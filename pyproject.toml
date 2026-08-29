@@ -5,7 +5,7 @@ description = "KORUS 개인정보처리시스템 접속기록 점검 도구"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "holidays==0.102",
+    "holidays==0.103",
     "openpyxl>=3.1.5",
     "pandas>=3.0.5",
     "python-calamine>=0.8.2",
@@ -19,7 +19,7 @@ dependencies = [
 korus-checker = "src.main:main"
 
 [project.optional-dependencies]
-dev = ["ruff==0.16.3", "mypy", "bandit==1.9.4", "pandas-stubs==3.0.5.260730", "types-openpyxl", "types-python-dateutil", "pre-commit", "pytest", "pytest-cov", "pytest-mock"]
+dev = ["ruff==0.16.4", "mypy", "bandit==1.9.4", "pandas-stubs==3.0.5.260730", "types-openpyxl", "types-python-dateutil", "pre-commit", "pytest", "pytest-cov", "pytest-mock"]
 
 [build-system]
 requires = ["hatchling"]
